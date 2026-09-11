@@ -1032,9 +1032,14 @@
     }
     function rule(){ ensure(2); doc.setDrawColor(150,150,150); doc.setLineWidth(0.2); doc.line(ML,y,PW-MR,y); y+=2.2; }
 
-    var kids=paper.children;
+    var kids=paper.childNodes;
     for(var i=0;i<kids.length;i++){
-      var el=kids[i], tag=el.tagName, cls=el.className||"", t=el.textContent||"";
+      var el=kids[i];
+      if(el.nodeType===3){ var tt=(el.textContent||"").trim(); if(tt) text(tt, 9.4, "normal", body, "left", 1.8); continue; }
+      if(el.nodeType!==1) continue;
+      var tag=el.tagName, cls=(typeof el.className==="string"?el.className:""), t=el.textContent||"";
+      // a role header is ALWAYS short — long paragraphs must never be bolded
+      var looksRole = t.length<=95 && (/(19|20)\d{2}/.test(t) || /\s\|\s/.test(t));
       if(tag==="H1"){ text(t, 19, "bold", nameColor, tpl==="classic"?"center":"left", 1.2); }
       else if(cls.indexOf("contact")>=0){ text(t, 9.2, "normal", gray, tpl==="classic"?"center":"left", 3); }
       else if(tag==="HR"){ if(tpl==="classic"){ rule(); } else { y+=1.5; } }
@@ -1043,11 +1048,12 @@
         text(t.toUpperCase(), 10, "bold", headColor, "left", tpl==="classic"?0.4:1.6);
         if(tpl==="classic"){ rule(); }
       }
-      else if(cls.indexOf("role")>=0){ y+=1; text(t, 10, "bold", dark, "left", 1); }
+      else if(tag==="H3"){ y+=1; text(t, 10, "bold", dark, "left", 1); }
+      else if(cls.indexOf("role")>=0 && t.length<=110){ y+=1; text(t, 10, "bold", dark, "left", 1); }
       else if(tag==="P"){
-        // treat a dated line immediately before a bullet list as a bold role header
         var nx=kids[i+1];
-        if(nx && nx.tagName==="UL" && /(19|20)\d{2}/.test(t)){ y+=1; text(t, 10, "bold", dark, "left", 1); }
+        while(nx && nx.nodeType===3 && !(nx.textContent||"").trim()){ nx=nx.nextSibling; }
+        if(looksRole && nx && nx.nodeType===1 && nx.tagName==="UL"){ y+=1; text(t, 10, "bold", dark, "left", 1); }
         else text(t, 9.4, "normal", body, "left", 1.8);
       }
       else if(tag==="UL"){
