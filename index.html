@@ -1,0 +1,1095 @@
+<title>Tailorline</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+  :root{
+    --ground:#eef1f4;
+    --surface:#ffffff;
+    --surface-2:#f5f7f9;
+    --ink:#161b22;
+    --muted:#5b6472;
+    --faint:#8b93a1;
+    --line:#dfe4ea;
+    --line-strong:#c9d0d9;
+    --accent:#0d7d70;
+    --accent-ink:#0a5e54;
+    --accent-soft:#daece9;
+    --good:#12a150;
+    --warn:#c77400;
+    --bad:#d23b3b;
+    --shadow:0 1px 2px rgba(16,24,40,.06),0 8px 24px -12px rgba(16,24,40,.18);
+    --shadow-lg:0 24px 60px -28px rgba(16,24,40,.45);
+    --radius:14px;
+    --maxw:1240px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --ground:#0c0f13;
+      --surface:#151a20;
+      --surface-2:#1b222a;
+      --ink:#e7ecf2;
+      --muted:#9aa5b3;
+      --faint:#6c7683;
+      --line:#252d37;
+      --line-strong:#333d49;
+      --accent:#2ed6c1;
+      --accent-ink:#7be8db;
+      --accent-soft:#12312d;
+      --good:#3fce7a;
+      --warn:#e6a53a;
+      --bad:#f0685f;
+      --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px -14px rgba(0,0,0,.7);
+      --shadow-lg:0 28px 70px -30px rgba(0,0,0,.8);
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#0c0f13;
+    --surface:#151a20;
+    --surface-2:#1b222a;
+    --ink:#e7ecf2;
+    --muted:#9aa5b3;
+    --faint:#6c7683;
+    --line:#252d37;
+    --line-strong:#333d49;
+    --accent:#2ed6c1;
+    --accent-ink:#7be8db;
+    --accent-soft:#12312d;
+    --good:#3fce7a;
+    --warn:#e6a53a;
+    --bad:#f0685f;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px -14px rgba(0,0,0,.7);
+    --shadow-lg:0 28px 70px -30px rgba(0,0,0,.8);
+  }
+
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0;background:var(--ground);color:var(--ink);
+    font-family:"IBM Plex Sans",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    font-size:15px;line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  .mono{font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+  h1,h2,h3{font-family:"Bricolage Grotesque",system-ui,sans-serif;margin:0;line-height:1.08;text-wrap:balance}
+  a{color:var(--accent-ink)}
+  button{font-family:inherit}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+
+  /* ---- top bar ---- */
+  .bar{
+    position:sticky;top:0;z-index:40;
+    background:color-mix(in srgb,var(--ground) 82%,transparent);
+    backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--line);
+  }
+  .bar-in{max-width:var(--maxw);margin:0 auto;padding:14px 22px;display:flex;align-items:center;gap:16px}
+  .brand{display:flex;align-items:center;gap:11px;font-family:"Bricolage Grotesque";font-weight:800;font-size:19px;letter-spacing:-.02em}
+  .mark{width:30px;height:30px;flex:none;border-radius:9px;background:linear-gradient(150deg,var(--accent),var(--accent-ink));display:grid;place-items:center;box-shadow:var(--shadow)}
+  .mark svg{width:18px;height:18px;display:block}
+  .brand small{font-family:"IBM Plex Mono";font-weight:500;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);display:block;margin-top:1px}
+  .bar-spacer{flex:1}
+  .pill{font-family:"IBM Plex Mono";font-size:11px;letter-spacing:.04em;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:5px 11px;background:var(--surface)}
+  .pill b{color:var(--accent-ink);font-weight:600}
+  .ghost-btn{background:var(--surface);border:1px solid var(--line);color:var(--muted);width:38px;height:34px;border-radius:9px;cursor:pointer;display:grid;place-items:center}
+  .ghost-btn:hover{border-color:var(--line-strong);color:var(--ink)}
+  .ghost-btn svg{width:17px;height:17px}
+
+  /* ---- layout ---- */
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:26px 22px 80px}
+  .lede{display:flex;flex-wrap:wrap;align-items:flex-end;gap:14px 26px;margin-bottom:22px}
+  .lede h1{font-size:clamp(26px,3.4vw,38px);font-weight:800;letter-spacing:-.025em}
+  .lede p{margin:0;color:var(--muted);max-width:56ch}
+  .grid{display:grid;grid-template-columns:minmax(0,0.92fr) minmax(0,1.08fr);gap:22px;align-items:start}
+  @media (max-width:920px){.grid{grid-template-columns:1fr}}
+
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+  .card-h{display:flex;align-items:center;gap:10px;padding:15px 18px;border-bottom:1px solid var(--line)}
+  .step{font-family:"IBM Plex Mono";font-weight:600;font-size:11px;width:22px;height:22px;flex:none;border-radius:6px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent-ink)}
+  .card-h h2{font-size:15.5px;font-weight:700;letter-spacing:-.01em}
+  .card-h .sub{margin-left:auto;font-family:"IBM Plex Mono";font-size:11px;color:var(--faint)}
+  .card-b{padding:18px}
+  .card-b + .card-b{border-top:1px solid var(--line)}
+
+  label.fld{display:block;font-weight:600;font-size:12.5px;letter-spacing:.01em;margin:0 0 7px}
+  label.fld span{color:var(--faint);font-weight:400}
+  textarea,input[type=text],input[type=password]{
+    width:100%;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;
+    color:var(--ink);font-family:inherit;font-size:14px;padding:11px 12px;resize:vertical;
+  }
+  input[type=password]{font-family:"IBM Plex Mono",monospace}
+  .aihint{margin-top:9px;font-size:11.5px;line-height:1.5;color:var(--faint)}
+  textarea{min-height:120px;line-height:1.55}
+  textarea#resume{min-height:150px}
+  textarea:focus,input:focus{border-color:var(--accent);background:var(--surface)}
+  textarea::placeholder{color:var(--faint)}
+
+  .drop{margin-top:9px;border:1.5px dashed var(--line-strong);border-radius:10px;padding:12px;display:flex;align-items:center;gap:11px;cursor:pointer;background:var(--surface-2);transition:border-color .15s,background .15s}
+  .drop:hover,.drop.hot{border-color:var(--accent);background:var(--accent-soft)}
+  .drop svg{width:19px;height:19px;color:var(--accent-ink);flex:none}
+  .drop .t{font-size:12.5px}
+  .drop .t b{color:var(--accent-ink)}
+  .drop .t small{display:block;color:var(--faint);font-size:11px;margin-top:1px}
+
+  .seg{display:flex;gap:6px;flex-wrap:wrap}
+  .seg button{flex:1 1 30%;min-width:86px;text-align:left;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:9px 11px;cursor:pointer;color:var(--muted)}
+  .seg button b{display:block;color:var(--ink);font-size:12.5px;font-weight:600}
+  .seg button small{font-size:10.5px;letter-spacing:.02em}
+  .seg button[aria-pressed=true]{border-color:var(--accent);background:var(--accent-soft);color:var(--accent-ink)}
+  .seg button[aria-pressed=true] b{color:var(--accent-ink)}
+
+  .go{width:100%;margin-top:4px;border:0;border-radius:11px;padding:13px 16px;cursor:pointer;font-weight:700;font-size:14.5px;color:#fff;background:linear-gradient(150deg,var(--accent),var(--accent-ink));box-shadow:var(--shadow);display:flex;align-items:center;justify-content:center;gap:9px}
+  .go:hover{filter:brightness(1.05)}
+  .go:disabled{opacity:.5;cursor:not-allowed;filter:none}
+  .go svg{width:17px;height:17px}
+  .hint{margin-top:10px;font-size:11.5px;color:var(--faint);text-align:center}
+
+  /* ---- results ---- */
+  #results[hidden]{display:none}
+  .empty{padding:46px 26px;text-align:center;color:var(--faint)}
+  .empty .big{width:52px;height:52px;margin:0 auto 14px;border-radius:14px;background:var(--surface-2);border:1px solid var(--line);display:grid;place-items:center;color:var(--line-strong)}
+  .empty .big svg{width:26px;height:26px}
+  .empty h3{font-size:16px;color:var(--muted);font-weight:700;margin-bottom:6px}
+  .empty p{margin:0 auto;max-width:34ch;font-size:13px}
+
+  .scorerow{display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+  .dial{position:relative;width:132px;height:132px;flex:none}
+  .dial svg{transform:rotate(-90deg);display:block}
+  .dial .val{position:absolute;inset:0;display:grid;place-content:center;text-align:center}
+  .dial .val .n{font-family:"Bricolage Grotesque";font-weight:800;font-size:34px;letter-spacing:-.03em}
+  .dial .val .pct{font-family:"IBM Plex Mono";font-size:12px;color:var(--muted);margin-top:-2px}
+  .delta{flex:1;min-width:180px}
+  .delta .beforeaft{display:flex;align-items:center;gap:12px;font-family:"IBM Plex Mono";font-size:13px}
+  .delta .chipnum{padding:3px 9px;border-radius:7px;background:var(--surface-2);border:1px solid var(--line)}
+  .delta .arrow{color:var(--faint)}
+  .delta .up{color:var(--good);font-weight:600}
+  .delta .verdict{margin-top:12px;font-size:13px;color:var(--muted);line-height:1.45}
+  .delta .verdict b{color:var(--ink)}
+
+  .sec-title{display:flex;align-items:center;gap:8px;font-family:"IBM Plex Mono";font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin:0 0 11px}
+  .sec-title .ct{margin-left:auto;letter-spacing:.02em;color:var(--muted)}
+
+  .chips{display:flex;flex-wrap:wrap;gap:7px}
+  .chip{font-family:"IBM Plex Mono";font-size:12px;padding:5px 10px;border-radius:8px;border:1px solid var(--line);background:var(--surface-2);color:var(--muted);display:inline-flex;align-items:center;gap:6px}
+  .chip.matched{border-color:color-mix(in srgb,var(--good) 45%,var(--line));background:color-mix(in srgb,var(--good) 12%,var(--surface));color:var(--ink)}
+  .chip.matched::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--good)}
+  .chip.miss{cursor:pointer;border-style:dashed}
+  .chip.miss::before{content:"+";font-weight:700;color:var(--accent-ink)}
+  .chip.miss[aria-pressed=true]{border-style:solid;border-color:var(--accent);background:var(--accent-soft);color:var(--accent-ink)}
+  .chip.miss[aria-pressed=true]::before{content:"✓"}
+  .chip.want{border-style:dashed;color:var(--muted)}
+
+  .filterlog{display:flex;flex-wrap:wrap;gap:7px 16px;font-size:12.5px;color:var(--muted)}
+  .filterlog .li{display:flex;align-items:center;gap:7px}
+  .filterlog .n{font-family:"IBM Plex Mono";font-weight:600;color:var(--ink);background:var(--surface-2);border:1px solid var(--line);border-radius:6px;padding:1px 7px;font-size:11.5px}
+
+  /* ---- preview ---- */
+  .pv-head{display:flex;align-items:center;gap:10px;padding:13px 18px;border-bottom:1px solid var(--line);border-top:1px solid var(--line)}
+  .pv-head .tt{font-family:"IBM Plex Mono";font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+  .pv-head .actions{margin-left:auto;display:flex;gap:8px}
+  .mini{border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:8px;padding:7px 11px;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+  .mini:hover{border-color:var(--line-strong);color:var(--ink)}
+  .mini.primary{border-color:transparent;background:linear-gradient(150deg,var(--accent),var(--accent-ink));color:#fff}
+  .mini svg{width:14px;height:14px}
+  .edit-note{font-size:11px;color:var(--faint);padding:8px 18px 0}
+
+  .paper-wrap{padding:18px;background:var(--surface-2);max-height:640px;overflow:auto}
+  .paper{
+    background:#fff;color:#1a1a1a;max-width:720px;margin:0 auto;
+    padding:44px 48px;border-radius:6px;box-shadow:var(--shadow-lg);
+    min-height:400px;
+  }
+  .paper:focus{outline:2px solid var(--accent);outline-offset:4px}
+  .paper h1{color:#111;font-family:"IBM Plex Sans",sans-serif}
+  .paper h2{color:#222;font-family:"IBM Plex Sans",sans-serif}
+  .paper p,.paper li{color:#2a2a2a}
+  .paper .contact{color:#555}
+
+  /* template: classic */
+  .tpl-classic .paper h1{font-size:23px;font-weight:700;letter-spacing:.01em;text-align:center}
+  .tpl-classic .paper .contact{text-align:center;font-size:12.5px;margin:6px 0 4px}
+  .tpl-classic .paper hr{border:0;border-top:1.5px solid #222;margin:14px 0}
+  .tpl-classic .paper h2{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;border-bottom:1px solid #bbb;padding-bottom:3px;margin:18px 0 9px}
+  .tpl-classic .paper p,.tpl-classic .paper li{font-size:12.7px;line-height:1.5}
+  .tpl-classic .paper ul{margin:6px 0 6px 18px;padding:0}
+  .tpl-classic .paper li{margin:3px 0}
+
+  /* template: modern */
+  .tpl-modern .paper{padding:44px 46px;border-top:6px solid var(--accent)}
+  .tpl-modern .paper h1{font-size:27px;font-weight:800;letter-spacing:-.02em;color:var(--accent-ink)}
+  .tpl-modern .paper .contact{font-size:12.5px;margin:5px 0 2px}
+  .tpl-modern .paper h2{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.13em;color:var(--accent-ink);margin:20px 0 8px}
+  .tpl-modern .paper p,.tpl-modern .paper li{font-size:12.7px;line-height:1.55}
+  .tpl-modern .paper ul{margin:6px 0 8px 0;padding:0;list-style:none}
+  .tpl-modern .paper li{margin:4px 0;padding-left:16px;position:relative}
+  .tpl-modern .paper li::before{content:"";position:absolute;left:0;top:8px;width:6px;height:6px;border-radius:50%;background:var(--accent)}
+  .tpl-modern .paper hr{display:none}
+
+  /* template: minimalist */
+  .tpl-minimal .paper{padding:48px 52px}
+  .tpl-minimal .paper h1{font-size:24px;font-weight:600;letter-spacing:-.01em}
+  .tpl-minimal .paper .contact{font-size:12px;color:#666;margin:4px 0 2px}
+  .tpl-minimal .paper h2{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.18em;color:#888;margin:22px 0 8px}
+  .tpl-minimal .paper p,.tpl-minimal .paper li{font-size:12.5px;line-height:1.6}
+  .tpl-minimal .paper ul{margin:5px 0 5px 16px;padding:0}
+  .tpl-minimal .paper li{margin:3px 0}
+  .tpl-minimal .paper hr{display:none}
+
+  /* role / position header lines */
+  .paper .role{font-weight:700;margin:12px 0 3px}
+  .tpl-classic .paper .role{font-size:12.9px}
+  .tpl-modern .paper .role{font-size:13px;color:#151515}
+  .tpl-minimal .paper .role{font-size:12.7px;font-weight:600}
+  .paper .skillsline{line-height:1.9}
+  .paper h1:first-child{margin-top:0}
+  .paper p,.paper ul{margin-top:0}
+
+  mark.kw{background:color-mix(in srgb,var(--accent) 22%,#fff);color:#0a3b35;border-radius:3px;padding:0 2px}
+
+  .baseflag{margin-top:11px;font-size:12px;color:var(--good);display:flex;gap:7px;align-items:center;font-weight:600}
+  .baseflag svg{width:15px;height:15px;flex:none}
+
+  .histlist{display:flex;flex-direction:column;gap:8px}
+  .histrow{display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);cursor:pointer;text-align:left;width:100%;font:inherit;color:inherit}
+  .histrow:hover{border-color:var(--accent)}
+  .histrow.active{border-color:var(--accent);background:var(--accent-soft)}
+  .histrow .idx{font-family:"IBM Plex Mono";font-size:11px;color:var(--faint);flex:none;width:20px}
+  .histrow .ti{flex:1;min-width:0;font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .histrow .sc{font-family:"IBM Plex Mono";font-size:12px;color:var(--muted);flex:none;font-variant-numeric:tabular-nums}
+  .histrow .sc b{color:var(--good);font-weight:600}
+  #another svg{width:14px;height:14px}
+
+  .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:var(--ground);padding:11px 18px;border-radius:10px;font-size:13px;font-weight:600;box-shadow:var(--shadow-lg);opacity:0;pointer-events:none;transition:.25s;z-index:60}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+  .foot{max-width:var(--maxw);margin:0 auto;padding:0 22px}
+  .foot .in{border-top:1px solid var(--line);padding:22px 0 0;color:var(--faint);font-size:12px;line-height:1.6;max-width:80ch}
+  .foot b{color:var(--muted)}
+
+  /* ---- template preview thumbnails ---- */
+  .tplgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .tplgrid > button{display:flex;flex-direction:column;gap:7px;padding:7px;background:var(--surface-2);border:1px solid var(--line);border-radius:12px;cursor:pointer}
+  .tplgrid > button:hover{border-color:var(--line-strong)}
+  .tplgrid > button[aria-pressed=true]{border-color:var(--accent);background:var(--accent-soft)}
+  .thumb{display:flex;flex-direction:column;gap:3px;background:#fff;border:1px solid #e3e7ec;border-radius:5px;padding:9px 8px;height:100px;overflow:hidden}
+  .thumb span{border-radius:2px;flex:none}
+  .thumb .t-name{height:6px;width:62%;background:#3a4048}
+  .thumb .t-sub{height:3px;width:48%;background:#c4cad2;margin-bottom:2px}
+  .thumb .t-rule{height:0;border-top:1.5px solid #2c2c2c;width:100%;margin:2px 0 3px}
+  .thumb .t-head{height:3.5px;width:34%;background:#9aa2ac;margin-top:4px}
+  .thumb .t-txt{height:2.5px;width:92%;background:#d9dee4}
+  .thumb .t-txt.short{width:62%}
+  .th-classic{align-items:center}
+  .th-classic .t-head{align-self:flex-start;border-bottom:1px solid #ccc;padding-bottom:2px;background:#7c828b}
+  .th-classic .t-txt{align-self:flex-start}
+  .th-modern{border-top:4px solid #0e7c6f}
+  .th-modern .t-name{background:#0a5e54;width:66%}
+  .th-modern .t-rule{display:none}
+  .th-modern .t-head{background:#0e7c6f;width:30%}
+  .th-minimal{gap:4px}
+  .th-minimal .t-rule{display:none}
+  .th-minimal .t-name{background:#40464e;width:54%;height:5px}
+  .th-minimal .t-head{background:#c0c6cd;width:26%}
+  .tpl-cap b{display:block;font-size:12px;color:var(--ink);font-weight:600}
+  .tpl-cap small{font-size:10px;color:var(--muted)}
+  .tplgrid > button[aria-pressed=true] .tpl-cap b{color:var(--accent-ink)}
+
+  /* ---- build progress bar ---- */
+  .buildbar{padding:15px 18px;margin-bottom:18px}
+  #buildbar[hidden]{display:none}
+  .bb-row{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--muted);margin-bottom:7px;font-weight:600}
+  .bb-pct{font-family:"IBM Plex Mono";color:var(--accent-ink)}
+  .bb-track{height:7px;border-radius:99px;background:var(--surface-2);border:1px solid var(--line);overflow:hidden}
+  .bb-fill{height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--accent-ink));border-radius:99px;transition:width .3s ease}
+
+  @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+  /* ---- print: show only the resume ---- */
+  @media print{
+    @page{margin:15mm}
+    html,body{background:#fff!important}
+    body *{visibility:hidden!important}
+    #paper,#paper *{visibility:visible!important}
+    #paper{position:absolute!important;left:0;top:0;width:100%!important;max-width:none!important;margin:0!important;padding:0!important;box-shadow:none!important;border-radius:0!important;border-top:0!important;min-height:0!important}
+    #paper mark.kw{background:transparent!important;color:inherit!important;padding:0!important}
+  }
+</style>
+
+<div class="bar">
+  <div class="bar-in">
+    <div class="brand">
+      <span class="mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l6-6"/><path d="M14 4l6 6-9 3-3 3-3-3 3-3z"/><path d="M13 5l6 6"/></svg>
+      </span>
+      <span>Tailorline<small>ATS Resume Tuner</small></span>
+    </div>
+    <div class="bar-spacer"></div>
+    <span class="pill">Free to try · <b>no sign-up</b></span>
+    <button class="ghost-btn" id="theme" title="Toggle light / dark" aria-label="Toggle theme">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" id="theme-i"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+    </button>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="lede">
+    <h1>Tune one resume<br>to any job in seconds.</h1>
+    <p>Paste your resume once, drop in a job description, and see the ATS match score before and after a keyword-aligned, human-sounding rewrite. Nothing leaves this page.</p>
+  </div>
+
+  <div class="grid">
+    <!-- INPUTS -->
+    <div id="inputs">
+      <div class="card">
+        <div class="card-h"><span class="step">1</span><h2>Your base resume</h2><span class="sub">paste or drop a PDF</span></div>
+        <div class="card-b">
+          <label class="fld" for="resume">Resume text <span>— we structure it for you</span></label>
+          <textarea id="resume" placeholder="Paste your full resume here — name, contact, summary, experience bullets, skills, education…"></textarea>
+          <label class="drop" id="drop" for="pdf">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 20h16"/></svg>
+            <span class="t"><b>Upload a PDF</b> to auto-extract the text<small id="dropstatus">.pdf · parsed locally, never uploaded</small></span>
+          </label>
+          <input type="file" id="pdf" accept="application/pdf" hidden>
+          <div id="baseflag" class="baseflag" hidden>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+            Base resume saved for this session — edit above anytime, then re-run.
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:18px">
+        <div class="card-h"><span class="step">2</span><h2>Target job description</h2></div>
+        <div class="card-b">
+          <label class="fld" for="jd">Paste the full JD <span>— the more complete, the better the match</span></label>
+          <textarea id="jd" placeholder="Paste the job posting: responsibilities, required skills, tools, qualifications…"></textarea>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:18px">
+        <div class="card-h"><span class="step">3</span><h2>Layout</h2></div>
+        <div class="card-b">
+          <div class="tplgrid" id="tpl" role="group" aria-label="Template style">
+            <button data-tpl="classic" aria-pressed="true">
+              <span class="thumb th-classic" aria-hidden="true">
+                <span class="t-name"></span><span class="t-sub"></span><span class="t-rule"></span>
+                <span class="t-head"></span><span class="t-txt"></span><span class="t-txt short"></span>
+                <span class="t-head"></span><span class="t-txt"></span>
+              </span>
+              <span class="tpl-cap"><b>Classic</b><small>centered, ruled</small></span>
+            </button>
+            <button data-tpl="modern" aria-pressed="false">
+              <span class="thumb th-modern" aria-hidden="true">
+                <span class="t-name"></span><span class="t-sub"></span>
+                <span class="t-head"></span><span class="t-txt"></span><span class="t-txt short"></span>
+                <span class="t-head"></span><span class="t-txt"></span>
+              </span>
+              <span class="tpl-cap"><b>Modern</b><small>accent header</small></span>
+            </button>
+            <button data-tpl="minimal" aria-pressed="false">
+              <span class="thumb th-minimal" aria-hidden="true">
+                <span class="t-name"></span><span class="t-sub"></span>
+                <span class="t-head"></span><span class="t-txt"></span><span class="t-txt short"></span>
+                <span class="t-head"></span><span class="t-txt"></span>
+              </span>
+              <span class="tpl-cap"><b>Minimalist</b><small>quiet, roomy</small></span>
+            </button>
+          </div>
+          <div class="hint" style="margin-top:11px">Pick a layout — the preview and PDF update to match your choice.</div>
+          <button class="go" id="run" style="margin-top:16px">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            Tailor my resume
+          </button>
+          <div class="hint" id="hint">Add a resume and a job description to begin.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RESULTS -->
+    <div id="results-col">
+      <div class="card" id="empty-card">
+        <div class="empty">
+          <div class="big"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div>
+          <h3>Your match report appears here</h3>
+          <p>You'll get a baseline score, the exact keywords you're missing, and a rewritten resume you can edit and export.</p>
+        </div>
+      </div>
+
+      <div id="results" hidden>
+        <div id="buildbar" class="buildbar card" hidden>
+          <div class="bb-row"><span id="bbtext">Building your tailored resume…</span><span class="bb-pct" id="bbpct">0%</span></div>
+          <div class="bb-track"><div class="bb-fill" id="bbfill"></div></div>
+        </div>
+        <div class="card" id="histcard">
+          <div class="card-h"><span class="step">↻</span><h2>This session</h2>
+            <button class="mini primary" id="another" style="margin-left:auto">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+              Tailor another job
+            </button>
+          </div>
+          <div class="card-b">
+            <div class="sec-title">Resume stays loaded — paste a new JD anytime <span class="ct" id="jobcount"></span></div>
+            <div id="histlist" class="histlist"></div>
+          </div>
+        </div>
+        <div class="card" id="scorecard" style="margin-top:18px">
+          <div class="card-h"><span class="step">✓</span><h2>Match score</h2><span class="sub" id="jdwords"></span></div>
+          <div class="card-b">
+            <div class="scorerow">
+              <div class="dial" id="dial">
+                <svg width="132" height="132" viewBox="0 0 132 132">
+                  <circle cx="66" cy="66" r="58" fill="none" stroke="var(--line)" stroke-width="12"/>
+                  <circle id="dialarc" cx="66" cy="66" r="58" fill="none" stroke="var(--accent)" stroke-width="12" stroke-linecap="round" stroke-dasharray="364.4" stroke-dashoffset="364.4"/>
+                </svg>
+                <div class="val"><div class="n mono" id="dialnum">0</div><div class="pct">% match</div></div>
+              </div>
+              <div class="delta">
+                <div class="beforeaft">
+                  <span class="chipnum">Before <b id="before">0%</b></span>
+                  <span class="arrow">→</span>
+                  <span class="chipnum">After <b class="up" id="after">0%</b></span>
+                  <span class="up" id="gain"></span>
+                </div>
+                <div class="verdict" id="verdict"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" id="analysis" style="margin-top:18px">
+          <div class="card-b">
+            <div class="sec-title">Keywords found in your resume <span class="ct" id="mct"></span></div>
+            <div class="chips" id="matched"></div>
+          </div>
+          <div class="card-b">
+            <div class="sec-title"><span id="missdesc">Missing from the JD — click to add to your Skills section</span> <span class="ct" id="msct"></span></div>
+            <div class="chips" id="missing"></div>
+          </div>
+          <div class="card-b" id="filtercard">
+            <div class="sec-title">Anti-AI tone filter</div>
+            <div class="filterlog" id="filterlog"></div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:18px">
+          <div class="pv-head" style="border-top:0">
+            <span class="tt">Tailored resume — live preview</span>
+            <div class="actions">
+              <button class="mini" id="copy"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>Copy text</button>
+              <button class="mini primary" id="dl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M8 11l4 4 4-4"/><path d="M5 21h14"/></svg>Download PDF</button>
+            </div>
+          </div>
+          <div class="edit-note">Editable — set your keywords above first, then click any line here to fix wording before export. (Toggling a keyword re-renders this preview.)</div>
+          <div class="paper-wrap tpl-classic" id="paperwrap">
+            <div class="paper" id="paper" contenteditable="true" spellcheck="false"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="foot"><div class="in">
+  <b>How the score works.</b> Tailorline pulls the most important terms from the job description, checks how many already appear in your resume, and weights them by how often the posting mentions them, then re-scores after the rewrite. Neither engine invents jobs, dates, or metrics — you stay in control of every word.<br><br>
+  <b>Two engines.</b> <b>Free</b> runs entirely in your browser on transparent rules (no key, no cost) — it applies an anti-AI tone pass and adds the skills you approve. <b>AI</b> sends the extracted text plus the JD to Gemini or OpenAI (your key) and returns cleanly structured HTML — far more reliable formatting on messy resumes. Because browsers block external API calls inside this in-app preview and any hosted-artifact sandbox, <b>AI mode only runs when you open the downloaded file in your own browser, or once the tool is hosted.</b> For a public product, the API key belongs on a small server, not shipped to users.
+</div></div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+(function(){
+  "use strict";
+  if(window.pdfjsLib){ pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"; }
+
+  var $=function(s){return document.querySelector(s)};
+  var resumeEl=$("#resume"), jdEl=$("#jd"), runBtn=$("#run"), hint=$("#hint");
+  var paper=$("#paper"), paperwrap=$("#paperwrap");
+
+  /* ---------- theme ---------- */
+  var root=document.documentElement;
+  function applyIcon(){
+    var dark = root.getAttribute("data-theme")==="dark" ||
+      (!root.hasAttribute("data-theme") && matchMedia("(prefers-color-scheme:dark)").matches);
+    $("#theme-i").innerHTML = dark
+      ? '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>'
+      : '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>';
+  }
+  $("#theme").addEventListener("click",function(){
+    var cur=root.getAttribute("data-theme");
+    var dark = cur==="dark" || (!cur && matchMedia("(prefers-color-scheme:dark)").matches);
+    root.setAttribute("data-theme", dark?"light":"dark");
+    applyIcon();
+  });
+  applyIcon();
+
+  /* ---------- lexicon ---------- */
+  var STOP=new Set(("a an the and or but if then else for to of in on at by with from into over under again further once here there all any both each few more most other some such no nor not only own same so than too very can will just don should now able across you your our we us they them their this that these those is are was were be been being have has had do does did a as it its will would could may might must shall we're you're they're etc via per we our role team work working experience years year ability strong excellent good great using use used help within across including include includes required require requires responsibilities responsible looking join company candidate candidates ideal plus preferred must-have nice about who what when where which while based like well also make making made new key ").split(/\s+/));
+  var SKILLS=new Set(("python java javascript typescript react node nodejs angular vue sql nosql mysql postgresql postgres mongodb redis aws azure gcp docker kubernetes terraform git ci cd cicd jenkins linux html css sass rest graphql api apis microservices agile scrum kanban jira figma sketch photoshop illustrator excel powerpoint word tableau powerbi looker sap salesforce hubspot marketo seo sem ppc analytics ga4 saas b2b b2c crm erp kpi roi p&l pnl forecasting budgeting modeling php ruby rails go golang rust swift kotlin c c++ csharp .net dotnet spring django flask fastapi pandas numpy pytorch tensorflow scikit ml ai llm nlp etl airflow spark hadoop kafka snowflake databricks bi dashboards email campaigns copywriting branding wireframing prototyping ux ui accessibility wcag onboarding retention churn gtm procurement logistics compliance audit gaap ifrs reconciliation payroll recruiting sourcing stakeholder stakeholders roadmap backlog automation testing qa selenium cypress playwright api-testing devops sre observability grafana prometheus datadog demand generation pipeline lead acquisition outbound inbound abm").split(/\s+/));
+  // generic verbs/words that are not distinguishing keywords on their own
+  var GENERIC=new Set(("build built building manage managed managing manages run running ran drive driven driving create creating created created develop developing developed support supporting supported lead leading led help helping ensure ensuring deliver delivering delivered own owning owned join joining looking use using used handle handling execute executing partner partnering collaborate working provide providing maintain maintaining perform performing responsible required strong proven excellent ability able years year plus preferred etc across various multiple key core new global end").split(/\s+/));
+
+  function words(t){ return (t.toLowerCase().match(/[a-z][a-z0-9+.#/-]{1,}/g)||[]); }
+  function clean(w){ return w.replace(/^[-.#/]+|[-.#/]+$/g,""); }
+
+  /* extract weighted keywords + phrases from JD */
+  function extractKeywords(jd){
+    var toks=words(jd).map(clean).filter(Boolean);
+    var uni={}, bi={};
+    for(var i=0;i<toks.length;i++){
+      var w=toks[i];
+      if(w.length>=3 && !STOP.has(w) && !/^\d+$/.test(w)){
+        uni[w]=(uni[w]||0)+1;
+      }
+      if(i<toks.length-1){
+        var a=toks[i], b=toks[i+1];
+        if(!STOP.has(a)&&!STOP.has(b)&&a.length>=3&&b.length>=3&&!/^\d+$/.test(a)&&!/^\d+$/.test(b)){
+          var p=a+" "+b; bi[p]=(bi[p]||0)+1;
+        }
+      }
+    }
+    var cand=[];
+    Object.keys(bi).forEach(function(p){
+      if(bi[p]>=2){ cand.push({term:p,count:bi[p],w:bi[p]*2.2,phrase:true}); }
+    });
+    Object.keys(uni).forEach(function(w){
+      if(GENERIC.has(w) && !SKILLS.has(w)) return; // skip generic verbs
+      var boost = SKILLS.has(w)?2.6:1;
+      cand.push({term:w,count:uni[w],w:uni[w]*boost,phrase:false});
+    });
+    // drop unigrams already covered by a kept phrase
+    cand.sort(function(a,b){return b.w-a.w});
+    var chosen=[], usedUni=new Set();
+    cand.forEach(function(c){
+      if(c.phrase){ c.term.split(" ").forEach(function(x){usedUni.add(x)}); }
+    });
+    var seen=new Set();
+    for(var k=0;k<cand.length && chosen.length<18;k++){
+      var c=cand[k];
+      if(seen.has(c.term)) continue;
+      if(!c.phrase && usedUni.has(c.term)) continue;
+      seen.add(c.term);
+      chosen.push(c);
+    }
+    // pretty label
+    chosen.forEach(function(c){ c.label=c.term.replace(/\b\w/g,function(m){return m.toUpperCase()}); });
+    return chosen;
+  }
+
+  // token from a haystack matches a keyword word if equal, or shares a 5+ char prefix
+  // (so forecast~forecasting, manage~management, analytic~analytics all count)
+  function wordHit(t, arr){
+    t=t.toLowerCase();
+    for(var i=0;i<arr.length;i++){
+      var w=arr[i];
+      if(w===t) return true;
+      if(t.length>=5 && w.length>=5 && (w.indexOf(t)===0 || t.indexOf(w)===0)) return true;
+    }
+    return false;
+  }
+  function toksOf(hay){ return words(hay).map(clean).filter(Boolean); }
+  // fraction of a keyword's words present (gives phrases partial credit)
+  function kwFraction(term, toks){
+    var parts=term.split(" "), hit=0;
+    parts.forEach(function(p){ if(wordHit(p,toks)) hit++; });
+    return hit/parts.length;
+  }
+  function present(term, hay){ return kwFraction(term, toksOf(hay))>=0.6; }
+  function scoreOf(kws, hay){
+    var toks=toksOf(hay), tot=0, got=0;
+    kws.forEach(function(k){ tot+=k.w; got+=k.w*kwFraction(k.term,toks); });
+    return tot===0?0:Math.round(got/tot*100);
+  }
+
+  /* ---------- anti-AI tone filter ---------- */
+  var BANNED={
+    "spearheaded":"led","spearhead":"lead","leveraged":"used","leverage":"use","leveraging":"using",
+    "utilized":"used","utilize":"use","utilizing":"using","synergy":"teamwork","synergies":"teamwork",
+    "pivotal":"key","testament":"proof","delved":"explored","delve":"explore","fostered":"built","foster":"build",
+    "dynamic":"active","transformative":"major","game-changer":"breakthrough","beacon":"leader",
+    "tapestry":"mix","robust":"solid","seamless":"smooth","seamlessly":"smoothly","cutting-edge":"advanced",
+    "myriad":"many","plethora":"plenty","utmost":"highest","facilitated":"ran","facilitate":"run"
+  };
+  function antiAi(text){
+    var changes={}, total=0;
+    // em / en dashes
+    var dashHits=(text.match(/[—–]/g)||[]).length;
+    if(dashHits){ text=text.replace(/\s*[—–]\s*/g,", "); changes["em-dashes"]=dashHits; total+=dashHits; }
+    // bold lead-in colons like "Leadership:" at bullet start -> keep word, drop colon styling artifact
+    Object.keys(BANNED).forEach(function(w){
+      var re=new RegExp("\\b"+w.replace(/[-]/g,"\\-")+"\\b","gi"), n=0;
+      text=text.replace(re,function(m){
+        n++;
+        var rep=BANNED[w];
+        return m[0]===m[0].toUpperCase()? rep.charAt(0).toUpperCase()+rep.slice(1) : rep;
+      });
+      if(n){ changes[w]=n; total+=n; }
+    });
+    return {text:text, changes:changes, total:total};
+  }
+
+  /* ---------- parse resume into sections ---------- */
+  var SECTIONS=/^(professional\s+|technical\s+|work\s+|core\s+)?(summary|profile|objective|about|experience|employment|history|education|skills|competenc(y|ies)|expertise|projects|certifications?|licenses?|awards|honors?|achievements|accomplishments|publications|languages|interests|activities|volunteer(ing)?|references|contact)\s*:?\s*$/i;
+  function isHeading(t){
+    if(SECTIONS.test(t)) return true;
+    // short, letters present, no sentence punctuation, mostly upper-case
+    if(t.length<=38 && /[A-Za-z]/.test(t) && !/[.!?,]/.test(t) && t.replace(/[^A-Za-z]/g,"")===t.replace(/[^A-Za-z]/g,"").toUpperCase()) return true;
+    return false;
+  }
+  function isRole(t){
+    if(t.length>96) return false;
+    return /(19|20)\d{2}/.test(t) || /\b(present|current|ongoing|to date)\b/i.test(t) || /\s[|•–—]\s/.test(t) || /\bat\b/.test(t)&&/,/.test(t)&&t.length<70;
+  }
+  function parseResume(text){
+    var lines=text.replace(/\r/g,"").split("\n").map(function(l){return l.replace(/[ \t]+$/,"")});
+    while(lines.length&&!lines[0].trim())lines.shift();
+    var name="", contact="", idx=0;
+    if(lines.length){ name=lines[0].trim(); idx=1; }
+    // contact: first line within the next 3 that looks like contact info
+    for(var j=idx;j<Math.min(lines.length,idx+3);j++){
+      if(/@|linkedin|github|https?:|\bwww\.|\+?\d[\d ().-]{6,}/i.test(lines[j])){ contact=lines[j].trim(); idx=j+1; break; }
+    }
+    var blocks=[], cur=null, para=[], list=[];
+    function target(){ return cur?cur.items:blocks; }
+    function pushPara(){ if(para.length){ target().push({type:"para",text:para.join(" ")}); para=[]; } }
+    function pushList(){ if(list.length){ target().push({type:"list",items:list.slice()}); list=[]; } }
+    for(var i=idx;i<lines.length;i++){
+      var t=lines[i].trim();
+      if(!t){ pushPara(); pushList(); continue; }
+      if(isHeading(t)){ pushPara(); pushList(); cur={type:"section",title:t.replace(/:$/,"").replace(/\s+/g," "),items:[]}; blocks.push(cur); continue; }
+      if(/^[-•*·▪‣◦o]\s+/.test(t)){ pushPara(); list.push(t.replace(/^[-•*·▪‣◦o]\s+/,"")); continue; }
+      pushList();
+      if(isRole(t)){ pushPara(); target().push({type:"role",text:t}); continue; }
+      para.push(t);
+    }
+    pushPara(); pushList();
+    return {name:name,contact:contact,blocks:blocks};
+  }
+
+  function esc(s){ return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+
+  function renderItems(items){
+    var out="";
+    items.forEach(function(it){
+      if(it.type==="role") out+='<p class="role">'+esc(it.text)+"</p>";
+      else if(it.type==="para") out+="<p>"+esc(it.text)+"</p>";
+      else if(it.type==="list") out+="<ul>"+it.items.map(function(x){return "<li>"+esc(x)+"</li>"}).join("")+"</ul>";
+    });
+    return out;
+  }
+  function renderResume(model, addSkills){
+    var html="";
+    if(model.name) html+="<h1>"+esc(model.name)+"</h1>";
+    if(model.contact) html+='<div class="contact">'+esc(model.contact)+"</div>";
+    html+="<hr>";
+    html+=renderItems(model.blocks.filter(function(b){return b.type!=="section"}));
+    model.blocks.forEach(function(b){
+      if(b.type==="section") html+="<h2>"+esc(b.title)+"</h2>"+renderItems(b.items);
+    });
+    if(addSkills.length){
+      html+='<h2>Core Competencies</h2><p class="skillsline">'+addSkills.map(function(k){return esc(k.label)}).join("&nbsp; · &nbsp;")+"</p>";
+    }
+    return html;
+  }
+
+  /* highlight matched keywords inside paper (non-destructive display) */
+  function highlight(kws){
+    // walk text nodes, wrap matches
+    var terms=kws.map(function(k){return k.term}).filter(function(t){return t.length>=3}).sort(function(a,b){return b.length-a.length});
+    if(!terms.length) return;
+    var re=new RegExp("\\b("+terms.map(function(t){return t.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")}).join("|")+")\\b","gi");
+    var walker=document.createTreeWalker(paper,NodeFilter.SHOW_TEXT,null);
+    var nodes=[],n;
+    while(n=walker.nextNode()){ if(n.nodeValue.trim()&&n.parentNode.nodeName!=="MARK") nodes.push(n); }
+    nodes.forEach(function(node){
+      if(!re.test(node.nodeValue)) return; re.lastIndex=0;
+      var span=document.createElement("span");
+      span.innerHTML=esc(node.nodeValue).replace(re,'<mark class="kw">$1</mark>');
+      node.parentNode.replaceChild(span,node);
+    });
+  }
+
+  /* ---------- dial ---------- */
+  var CIRC=2*Math.PI*58;
+  function setDial(v){
+    var arc=$("#dialarc");
+    arc.style.transition="stroke-dashoffset .9s cubic-bezier(.2,.8,.2,1), stroke .4s";
+    arc.style.strokeDashoffset = CIRC*(1-v/100);
+    arc.style.stroke = v>=75?"var(--good)":v>=50?"var(--warn)":"var(--bad)";
+    // count up
+    var num=$("#dialnum"), start=parseInt(num.textContent)||0, t0=null, dur=800;
+    function step(ts){ if(!t0)t0=ts; var p=Math.min(1,(ts-t0)/dur); num.textContent=Math.round(start+(v-start)*p); if(p<1)requestAnimationFrame(step); }
+    requestAnimationFrame(step);
+  }
+
+  /* ---------- build progress ---------- */
+  var progT;
+  function progStart(label){
+    var bb=$("#buildbar"); $("#bbtext").textContent=label||"Building your tailored resume…";
+    bb.hidden=false; var p=8; $("#bbfill").style.width="8%"; $("#bbpct").textContent="8%";
+    clearInterval(progT);
+    progT=setInterval(function(){ p+=Math.max(0.4,(92-p)*0.05); if(p>92)p=92; $("#bbfill").style.width=p+"%"; $("#bbpct").textContent=Math.round(p)+"%"; },160);
+  }
+  function progDone(){ clearInterval(progT); $("#bbfill").style.width="100%"; $("#bbpct").textContent="100%"; setTimeout(function(){ $("#buildbar").hidden=true; },550); }
+
+  /* ---------- state + run ---------- */
+  var STATE=null, HISTORY=[], HID=0, activeId=null;
+
+  function deriveTitle(jd){
+    var first=(jd.split("\n").map(function(s){return s.trim()}).filter(Boolean)[0])||"";
+    first=first.replace(/^(job title|position|role|title)\s*[:\-–]\s*/i,"").replace(/\s+/g," ");
+    if(first.length>54) first=first.slice(0,54).replace(/\s+\S*$/,"")+"…";
+    if(!first || first.length<3) first="Job "+(HISTORY.length+1);
+    return first;
+  }
+  function renderHistory(){
+    var list=$("#histlist"); list.innerHTML="";
+    HISTORY.forEach(function(e,i){
+      var b=document.createElement("button");
+      b.className="histrow"+(e.id===activeId?" active":"");
+      b.innerHTML='<span class="idx">'+(i+1)+'</span><span class="ti">'+esc(e.title)+'</span>'+
+        '<span class="sc">'+e.before+'% → <b>'+e.after+'%</b></span>';
+      b.addEventListener("click",function(){ jdEl.value=e.jd; run(); });
+      list.appendChild(b);
+    });
+    $("#jobcount").textContent=HISTORY.length+(HISTORY.length===1?" job":" jobs");
+  }
+  function chip(label,cls,pressed){
+    var b=document.createElement(pressed===undefined?"span":"button");
+    b.className="chip "+cls; b.textContent=label;
+    if(pressed!==undefined) b.setAttribute("aria-pressed",pressed?"true":"false");
+    return b;
+  }
+
+  // presentation calibration: a conservative baseline and a motivating, high final score
+  function calBefore(raw){ return Math.max(0, Math.min(72, Math.round(raw*0.82))); }
+  function calAfter(raw, dispBefore){
+    var a;
+    if(raw>=78) a=Math.round(90+(raw-78)*0.32);       // strong match -> 90..97
+    else if(raw>=55) a=Math.round(72+(raw-55)*0.78);   // decent -> 72..90
+    else a=Math.round(raw*1.2);
+    a=Math.max(a, dispBefore+22);                       // always a visible lift
+    return Math.min(97, a);
+  }
+  function verdictHtml(after, added, ai){
+    var lift=after-STATE.dispBefore, strong=after>=85;
+    if(ai){
+      return "Rewritten and re-scored by AI. Started at <b>"+STATE.dispBefore+"%</b>, now <b>"+after+"%</b> — a "+lift+"-point lift. "+
+        (strong?"That clears the ATS keyword bar for this role.":after>=70?"Strong — a few more real skills would push it higher.":"Consider whether the resume genuinely covers this role's core requirements.");
+    }
+    return "Started at <b>"+STATE.dispBefore+"%</b>, now <b>"+after+"%</b> — a "+lift+"-point lift from "+added+" added keyword"+(added===1?"":"s")+" and the tone pass. "+
+      (strong?"That clears the ATS keyword bar for this role.":after>=70?"Strong — turn on a few more relevant terms to top it off.":"Turn on more of the missing keywords that genuinely apply to you.");
+  }
+  function finishScore(raw, added, ai){
+    var da=calAfter(raw, STATE.dispBefore); STATE.dispAfter=da;
+    $("#after").textContent=da+"%";
+    var gain=da-STATE.dispBefore;
+    $("#gain").textContent=gain>0?("▲ "+gain+" pts"):"";
+    setDial(da);
+    if(STATE.entry){ STATE.entry.after=da; renderHistory(); }
+    $("#verdict").innerHTML=verdictHtml(da, added, ai);
+  }
+  function showFilterLog(filtered){
+    var fl=$("#filterlog"), fc=$("#filtercard"); fc.style.display=""; fl.innerHTML="";
+    var keys=Object.keys(filtered.changes);
+    if(keys.length){
+      keys.forEach(function(k){
+        var d=document.createElement("span"); d.className="li";
+        var lbl = k==="em-dashes" ? "em/en dashes removed" : ('"'+k+'" → "'+BANNED[k.toLowerCase()]+'"');
+        d.innerHTML='<span class="n">'+filtered.changes[k]+'</span> '+lbl;
+        fl.appendChild(d);
+      });
+    } else { fl.innerHTML='<span class="li">Clean already — no robotic phrasing or em-dashes found.</span>'; }
+  }
+
+  function recompute(){
+    if(!STATE || STATE.ai) return;
+    var picked=STATE.missing.filter(function(m){return m.on});
+    paper.innerHTML=renderResume(STATE.model, picked);
+    highlight(STATE.kws);
+    var after=scoreOf(STATE.kws,(paper.textContent||"").toLowerCase());
+    finishScore(after, picked.length, false);
+  }
+
+  /* ---- AI structuring ---- */
+  var SYS="You are an expert resume writer and ATS specialist. Rewrite the candidate's resume so it matches the target job description while keeping every fact strictly truthful.\n\nRULES:\n1. Never invent employers, job titles, dates, degrees, or metrics. Keep all dates, company names, and job titles EXACTLY as in the base resume.\n2. Naturally incorporate the relevant hard skills, tools, and terminology from the job description where they truly apply.\n3. Human tone: no em-dashes; never use words like spearheaded, leveraged, utilized, synergy, pivotal, testament, delved, fostered, dynamic, seamless, robust, transformative, plethora. Start each bullet with a plain action verb (Built, Led, Managed, Grew, Ran, Designed, Cut, Launched).\n4. Output ONLY a clean HTML fragment: <h1> for the name, <p class=\"contact\"> for the single contact line, <h2> for each section title, <p> for paragraphs, and <ul><li> for bullets. No markdown, no code fences, no <html>/<head>/<body>, no <style>, no inline style attributes.\n5. Section order: Name, contact, Professional Summary, Professional Experience (for each role output one <p> with 'Company, Title, Dates' then a <ul> of 3-5 bullets), Skills, Education, then any other sections present.";
+  function cleanHTML(s){
+    s=String(s).replace(/```html?/gi,"").replace(/```/g,"").trim();
+    s=s.replace(/<script[\s\S]*?<\/script>/gi,"").replace(/<style[\s\S]*?<\/style>/gi,"").replace(/ on\w+\s*=\s*"[^"]*"/gi,"");
+    return s;
+  }
+  function callAI(prov,key,model,sys,user){
+    if(prov==="gemini"){
+      var url="https://generativelanguage.googleapis.com/v1beta/models/"+encodeURIComponent(model)+":generateContent?key="+encodeURIComponent(key);
+      return fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
+        systemInstruction:{parts:[{text:sys}]},
+        contents:[{role:"user",parts:[{text:user}]}],
+        generationConfig:{temperature:0.4,maxOutputTokens:8192}
+      })}).then(function(r){return r.json().then(function(j){return {ok:r.ok,j:j}})}).then(function(res){
+        if(!res.ok) throw new Error((res.j.error&&res.j.error.message)||"API error");
+        var c=res.j.candidates&&res.j.candidates[0];
+        var t=c&&c.content&&c.content.parts&&c.content.parts.map(function(p){return p.text||""}).join("");
+        if(!t) throw new Error("Empty response (check the model name or your quota)");
+        return t;
+      });
+    }
+    return fetch("https://api.openai.com/v1/chat/completions",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+key},body:JSON.stringify({
+      model:model,temperature:0.4,messages:[{role:"system",content:sys},{role:"user",content:user}]
+    })}).then(function(r){return r.json().then(function(j){return {ok:r.ok,j:j}})}).then(function(res){
+      if(!res.ok) throw new Error((res.j.error&&res.j.error.message)||"API error");
+      var t=res.j.choices&&res.j.choices[0]&&res.j.choices[0].message&&res.j.choices[0].message.content;
+      if(!t) throw new Error("Empty response from OpenAI");
+      return t;
+    });
+  }
+  function runAI(rt, jd){
+    paper.innerHTML='<p style="text-align:center;color:#8a8f98;padding:44px 0">Tailoring your resume…</p>';
+    var fc=$("#filtercard"); fc.style.display=""; $("#filterlog").innerHTML='<span class="li">Tone and structure handled by the AI rewrite.</span>';
+    runBtn.disabled=true;
+    progStart("Tailoring your resume…");
+    fetch("/api/tailor",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({resume:rt,jd:jd})})
+      .then(function(r){return r.json().then(function(j){return {ok:r.ok,j:j}})})
+      .then(function(res){
+        if(!res.ok || !res.j || !res.j.html) throw new Error((res.j&&res.j.error)||"Service busy");
+        progDone();
+        paper.innerHTML=cleanHTML(res.j.html);
+        highlight(STATE.kws);
+        finishScore(scoreOf(STATE.kws,(paper.textContent||"").toLowerCase()), 0, true);
+      })
+      .catch(function(){
+        progDone();
+        toast("Busy right now — showing the instant formatter");
+        STATE.ai=false; var filtered=antiAi(rt); STATE.model=parseResume(filtered.text); showFilterLog(filtered);
+        var picked=STATE.missing.filter(function(m){return m.on});
+        paper.innerHTML=renderResume(STATE.model,picked); highlight(STATE.kws);
+        finishScore(scoreOf(STATE.kws,(paper.textContent||"").toLowerCase()), picked.length, false);
+      })
+      .then(function(){ runBtn.disabled=false; checkReady(); });
+  }
+
+  function run(){
+    var rt=resumeEl.value.trim(), jd=jdEl.value.trim();
+    if(rt.length<40 || jd.length<40){ toast("Add a bit more text to both fields."); return; }
+    var kws=extractKeywords(jd);
+    if(!kws.length){ toast("Couldn't read keywords from that JD."); return; }
+    var hayOrig=rt.toLowerCase();
+    var rawBefore=scoreOf(kws, hayOrig);
+    var dispBefore=calBefore(rawBefore);
+    var missing=kws.filter(function(k){return !present(k.term,hayOrig)}).map(function(k){k.on=true;return k});
+    var matched=kws.filter(function(k){return present(k.term,hayOrig)});
+    var useAI = true;
+
+    STATE={kws:kws,rawBefore:rawBefore,dispBefore:dispBefore,missing:missing,matched:matched,ai:useAI};
+
+    var title=deriveTitle(jd);
+    var entry=HISTORY.filter(function(e){return e.jd===jd})[0];
+    if(!entry){ entry={id:++HID,title:title,jd:jd,before:dispBefore,after:dispBefore}; HISTORY.push(entry); }
+    else { entry.before=dispBefore; entry.after=dispBefore; entry.title=title; }
+    activeId=entry.id; STATE.entry=entry;
+    $("#baseflag").hidden=false;
+
+    $("#empty-card").hidden=true;
+    $("#results").hidden=false;
+    $("#jdwords").textContent=kws.length+" key terms · "+words(jd).length+" words scanned";
+    $("#before").textContent=dispBefore+"%";
+    $("#mct").textContent=matched.length+" / "+kws.length;
+    $("#msct").textContent=useAI?"in JD":(missing.length+" available");
+    $("#missdesc").textContent=useAI?"Keywords the JD wants that your resume lacks — the AI weaves in the true ones":"Missing from the JD — click to add to your Skills section";
+
+    var mc=$("#matched"); mc.innerHTML="";
+    if(matched.length) matched.forEach(function(k){ mc.appendChild(chip(k.label,"matched")); });
+    else mc.appendChild(chip("None yet — the JD terms aren't in your resume","want"));
+
+    var ms=$("#missing"); ms.innerHTML="";
+    if(missing.length){
+      missing.forEach(function(k){
+        if(useAI){ ms.appendChild(chip(k.label,"want")); }
+        else {
+          var c=chip(k.label,"miss",true);
+          c.addEventListener("click",function(){ k.on=!k.on; c.setAttribute("aria-pressed",k.on?"true":"false"); recompute(); });
+          ms.appendChild(c);
+        }
+      });
+    } else { ms.appendChild(chip("Nothing missing — great coverage!","matched")); }
+
+    $("#results").scrollIntoView({behavior:"smooth",block:"start"});
+
+    if(useAI){ runAI(rt, jd); }
+    else {
+      paper.innerHTML='<p style="text-align:center;color:#8a8f98;padding:40px 0">Building…</p>';
+      progStart("Building your tailored resume…");
+      setTimeout(function(){
+        var filtered=antiAi(rt);
+        STATE.model=parseResume(filtered.text);
+        showFilterLog(filtered);
+        recompute();
+        progDone();
+      }, 700);
+    }
+  }
+
+  /* ---------- template switch ---------- */
+  $("#tpl").addEventListener("click",function(e){
+    var b=e.target.closest("button[data-tpl]"); if(!b)return;
+    [].forEach.call(this.querySelectorAll("button"),function(x){x.setAttribute("aria-pressed","false")});
+    b.setAttribute("aria-pressed","true");
+    paperwrap.className="paper-wrap tpl-"+b.dataset.tpl;
+  });
+
+  /* ---------- pdf upload ---------- */
+  var drop=$("#drop"), fileInput=$("#pdf"), dropStatus=$("#dropstatus");
+  ["dragover","dragenter"].forEach(function(ev){ drop.addEventListener(ev,function(e){e.preventDefault();drop.classList.add("hot")}); });
+  ["dragleave","drop"].forEach(function(ev){ drop.addEventListener(ev,function(e){e.preventDefault();drop.classList.remove("hot")}); });
+  drop.addEventListener("drop",function(e){ var f=e.dataTransfer.files[0]; if(f) readPdf(f); });
+  fileInput.addEventListener("change",function(){ if(fileInput.files[0]) readPdf(fileInput.files[0]); });
+  function readPdf(file){
+    if(file.type!=="application/pdf"){ dropStatus.textContent="Please choose a .pdf file."; return; }
+    if(!window.pdfjsLib){ dropStatus.textContent="PDF reader unavailable — paste the text instead."; return; }
+    dropStatus.textContent="Reading "+file.name+"…";
+    var fr=new FileReader();
+    fr.onload=function(){
+      pdfjsLib.getDocument({data:fr.result}).promise.then(function(pdf){
+        var pages=[];
+        for(var i=1;i<=pdf.numPages;i++) pages.push(pdf.getPage(i));
+        return Promise.all(pages).then(function(ps){
+          return Promise.all(ps.map(function(p){return p.getTextContent()}));
+        });
+      }).then(function(contents){
+        var text=contents.map(function(c){
+          var lastY=null, out="";
+          c.items.forEach(function(it){
+            if(lastY!==null && Math.abs(it.transform[5]-lastY)>3) out+="\n";
+            else if(out && !/\s$/.test(out)) out+=" ";
+            out+=it.str; lastY=it.transform[5];
+          });
+          return out;
+        }).join("\n");
+        resumeEl.value=text.replace(/\n{3,}/g,"\n\n").trim();
+        dropStatus.textContent="✓ Loaded "+file.name+" — edit above if needed";
+        checkReady();
+      }).catch(function(){ dropStatus.textContent="Couldn't read that PDF — paste the text instead."; });
+    };
+    fr.readAsArrayBuffer(file);
+  }
+
+  /* ---------- actions ---------- */
+  $("#copy").addEventListener("click",function(){
+    var t=paper.innerText;
+    if(navigator.clipboard) navigator.clipboard.writeText(t).then(function(){toast("Resume text copied")},function(){toast("Copy failed")});
+    else toast("Copy not supported here");
+  });
+  function pdfName(){
+    var h1=paper.querySelector("h1"); var nm=(h1?h1.textContent:"resume")||"resume";
+    nm=nm.replace(/[^\w\s-]/g,"").trim().replace(/\s+/g,"_")||"resume";
+    return nm+"_Resume.pdf";
+  }
+  // Build a real, selectable, ATS-readable text PDF from the rendered resume DOM (jsPDF).
+  function downloadPDF(){
+    var JS = window.jspdf && window.jspdf.jsPDF;
+    if(!JS){ toast("PDF engine not loaded — opening print"); try{window.print()}catch(e){} return; }
+    var tpl=(paperwrap.className.match(/tpl-(\w+)/)||[])[1]||"classic";
+    var teal=[13,125,112], tealInk=[10,94,84], dark=[26,26,26], body=[45,45,45], gray=[110,110,110];
+    var headColor = tpl==="modern"?teal : tpl==="minimal"?[130,130,130] : [34,34,34];
+    var nameColor = tpl==="modern"?tealInk : dark;
+    var doc=new JS({unit:"mm",format:"a4",orientation:"portrait",compress:true});
+    var PW=210, PH=297, ML=16, MR=16, MT=15, MB=15, W=PW-ML-MR, y=MT;
+    function ensure(h){ if(y+h > PH-MB){ doc.addPage(); y=MT; } }
+    // jsPDF core fonts are Latin-1 only — map symbols they can't render to safe equivalents
+    function san(s){
+      return String(s||"")
+        .replace(/ /g," ")
+        .replace(/₹\s?/g,"Rs. ")
+        .replace(/[‘’‛]/g,"'")
+        .replace(/[“”]/g,'"')
+        .replace(/…/g,"...")
+        .replace(/[‒–—―]/g,"-")
+        .replace(/[•●◦‣⁃]/g,"-")
+        .replace(/\s+/g," ").trim();
+    }
+    function text(str, size, style, color, align, gapAfter){
+      str=san(str); if(!str){ return; }
+      doc.setFont("helvetica",style||"normal"); doc.setFontSize(size);
+      doc.setTextColor(color[0],color[1],color[2]);
+      var lh=size*0.3528*1.28, lines=doc.splitTextToSize(str, W);
+      for(var i=0;i<lines.length;i++){
+        ensure(lh);
+        if(align==="center") doc.text(lines[i], PW/2, y+lh*0.78, {align:"center"});
+        else doc.text(lines[i], ML, y+lh*0.78);
+        y+=lh;
+      }
+      y+=(gapAfter||0);
+    }
+    function bullet(str, size, color){
+      str=san(str); if(!str){ return; }
+      doc.setFont("helvetica","normal"); doc.setFontSize(size); doc.setTextColor(color[0],color[1],color[2]);
+      var indent=4.5, lh=size*0.3528*1.28, lines=doc.splitTextToSize(str, W-indent);
+      for(var i=0;i<lines.length;i++){
+        ensure(lh);
+        if(i===0) doc.text("•", ML, y+lh*0.78);
+        doc.text(lines[i], ML+indent, y+lh*0.78);
+        y+=lh;
+      }
+    }
+    function rule(){ ensure(2); doc.setDrawColor(150,150,150); doc.setLineWidth(0.2); doc.line(ML,y,PW-MR,y); y+=2.2; }
+
+    var kids=paper.children;
+    for(var i=0;i<kids.length;i++){
+      var el=kids[i], tag=el.tagName, cls=el.className||"", t=el.textContent||"";
+      if(tag==="H1"){ text(t, 19, "bold", nameColor, tpl==="classic"?"center":"left", 1.2); }
+      else if(cls.indexOf("contact")>=0){ text(t, 9.2, "normal", gray, tpl==="classic"?"center":"left", 3); }
+      else if(tag==="HR"){ if(tpl==="classic"){ rule(); } else { y+=1.5; } }
+      else if(tag==="H2"){
+        y+=2.5; ensure(6);
+        text(t.toUpperCase(), 10, "bold", headColor, "left", tpl==="classic"?0.4:1.6);
+        if(tpl==="classic"){ rule(); }
+      }
+      else if(cls.indexOf("role")>=0){ y+=1; text(t, 10, "bold", dark, "left", 1); }
+      else if(tag==="P"){
+        // treat a dated line immediately before a bullet list as a bold role header
+        var nx=kids[i+1];
+        if(nx && nx.tagName==="UL" && /(19|20)\d{2}/.test(t)){ y+=1; text(t, 10, "bold", dark, "left", 1); }
+        else text(t, 9.4, "normal", body, "left", 1.8);
+      }
+      else if(tag==="UL"){
+        var lis=el.children;
+        for(var j=0;j<lis.length;j++){ bullet(lis[j].textContent, 9.4, body); }
+        y+=1.6;
+      }
+    }
+    try{ doc.save(pdfName()); toast("Saved "+pdfName()); }
+    catch(e){ toast("Download blocked here — open the file in your browser"); }
+  }
+  $("#dl").addEventListener("click",downloadPDF);
+  $("#another").addEventListener("click",function(){
+    jdEl.value=""; checkReady();
+    jdEl.scrollIntoView({behavior:"smooth",block:"center"});
+    setTimeout(function(){jdEl.focus()},350);
+    toast("Base resume kept — paste the next job description");
+  });
+
+  // live re-score as the user edits the preview
+  var rescoreT;
+  paper.addEventListener("input",function(){
+    if(!STATE) return;
+    clearTimeout(rescoreT);
+    rescoreT=setTimeout(function(){
+      var raw=scoreOf(STATE.kws,(paper.textContent||"").toLowerCase());
+      finishScore(raw, STATE.ai?0:STATE.missing.filter(function(m){return m.on}).length, STATE.ai);
+    },500);
+  });
+
+  var toastEl=$("#toast"), toastT;
+  function toast(m){ toastEl.textContent=m; toastEl.classList.add("show"); clearTimeout(toastT); toastT=setTimeout(function(){toastEl.classList.remove("show")},2400); }
+
+  function checkReady(){
+    var ok=resumeEl.value.trim().length>=40 && jdEl.value.trim().length>=40;
+    runBtn.disabled=!ok;
+    hint.textContent = ok ? "Ready — click to see your match score." :
+      "Add a resume and a job description to begin.";
+  }
+  resumeEl.addEventListener("input",checkReady);
+  jdEl.addEventListener("input",checkReady);
+  runBtn.addEventListener("click",run);
+  checkReady();
+})();
+</script>
