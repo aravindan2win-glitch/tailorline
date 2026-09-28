@@ -1163,7 +1163,7 @@
   function jobCard(j){
     var el=document.createElement("div"); el.className="jobcard";
     var meta=[j.company,j.location].filter(Boolean).join(" · ");
-    var bits=[]; if(j.created) bits.push(timeAgo(j.created)); if(j.salary) bits.push(j.salary);
+    var bits=[]; if(j.source) bits.push("via "+j.source); if(j.created) bits.push(timeAgo(j.created)); if(j.salary) bits.push(j.salary);
     var desc=(j.description||""); if(desc.length>280) desc=desc.slice(0,280)+"…";
     el.innerHTML=
       '<div class="jc-title">'+esc(j.title||"Untitled role")+'</div>'+
@@ -1174,10 +1174,20 @@
     var actions=el.querySelector(".jc-actions");
     var tailor=document.createElement("button"); tailor.className="mini primary"; tailor.textContent="Tailor my resume →";
     tailor.addEventListener("click",function(){
-      jdEl.value=j.description||j.title||""; checkReady();
-      showView("tailor");
-      setTimeout(function(){ jdEl.scrollIntoView({behavior:"smooth",block:"center"}); jdEl.focus(); },250);
-      toast("Job loaded — add your resume and tailor");
+      function load(text){
+        jdEl.value=text||j.title||""; checkReady();
+        showView("tailor");
+        setTimeout(function(){ jdEl.scrollIntoView({behavior:"smooth",block:"center"}); jdEl.focus(); },250);
+        toast("Job loaded — add your resume and tailor");
+      }
+      if(j.description){ load(j.description); return; }
+      if(j.gh && j.id){
+        toast("Loading job description…");
+        fetch("/api/job?token="+encodeURIComponent(j.gh)+"&id="+encodeURIComponent(j.id))
+          .then(function(r){return r.json();})
+          .then(function(d){ load((d&&d.description)||j.title); })
+          .catch(function(){ load(j.title); });
+      } else { load(j.title); }
     });
     var apply=document.createElement("a"); apply.className="mini"; apply.textContent="Apply ↗";
     apply.href=j.url||"#"; apply.target="_blank"; apply.rel="noopener noreferrer";
@@ -1193,9 +1203,9 @@
     fetch(url).then(function(r){return r.json().then(function(j){return {ok:r.ok,j:j}})}).then(function(res){
       if(!res.ok || !res.j || !res.j.jobs) throw new Error((res.j&&res.j.error)||"Search failed");
       var jobs=res.j.jobs;
-      if(jobPage===1 && !jobs.length){ msg.textContent="No jobs found for that search. Try broader keywords."; return; }
-      var total = res.j.count ? res.j.count.toLocaleString() : jobs.length;
-      msg.textContent = total+' openings for "'+jobQ+'"'+(jobWhere?(" in "+jobWhere):"");
+      if(jobPage===1 && !jobs.length){ msg.textContent="No matches yet — try a broader title like “engineer”, “marketing”, “product”, or “data”."; return; }
+      var total = (res.j.total!=null) ? res.j.total : jobs.length;
+      msg.textContent = total+' matching job'+(total===1?"":"s")+' for "'+jobQ+'"'+(jobWhere?(" in "+jobWhere):"")+" — direct from employers";
       jobs.forEach(function(j){ list.appendChild(jobCard(j)); });
       more.hidden = jobs.length<10;
     }).catch(function(err){
