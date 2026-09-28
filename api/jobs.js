@@ -1,58 +1,101 @@
-// Tailorline — live job search via Adzuna, redirect-to-source model.
-// GET /api/jobs?q=<keywords>&where=<US city/state>&page=<n>  ->  { jobs:[...], count }
-// Required env vars (free at developer.adzuna.com):  ADZUNA_APP_ID, ADZUNA_APP_KEY
+// Tailorline — free "ingest" job board.
+// Pulls live from real companies' own ATS boards (Greenhouse + Ashby). No API key, no cost.
+// Apply links go straight to each employer's own careers page.
+// GET /api/jobs?q=<keywords>&where=<city/state>&page=<n>  ->  { jobs:[...], total }
 
-function clean(s){
-  return String(s || "")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&amp;/g, "&").replace(/&#0?39;|&rsquo;|&lsquo;/g, "'")
-    .replace(/&quot;/g, '"').replace(/&hellip;/g, "...").replace(/&nbsp;/g, " ")
-    .replace(/\s+/g, " ").trim();
+var COMPANIES = [
+  { src:"gh", token:"stripe",     name:"Stripe" },
+  { src:"gh", token:"coinbase",   name:"Coinbase" },
+  { src:"gh", token:"robinhood",  name:"Robinhood" },
+  { src:"gh", token:"brex",       name:"Brex" },
+  { src:"gh", token:"asana",      name:"Asana" },
+  { src:"gh", token:"twilio",     name:"Twilio" },
+  { src:"gh", token:"cloudflare", name:"Cloudflare" },
+  { src:"gh", token:"pinterest",  name:"Pinterest" },
+  { src:"gh", token:"reddit",     name:"Reddit" },
+  { src:"gh", token:"discord",    name:"Discord" },
+  { src:"gh", token:"instacart",  name:"Instacart" },
+  { src:"gh", token:"gitlab",     name:"GitLab" },
+  { src:"gh", token:"databricks", name:"Databricks" },
+  { src:"gh", token:"samsara",    name:"Samsara" },
+  { src:"gh", token:"flexport",   name:"Flexport" },
+  { src:"gh", token:"dropbox",    name:"Dropbox" },
+  { src:"ashby", token:"openai",  name:"OpenAI" },
+  { src:"ashby", token:"notion",  name:"Notion" }
+];
+
+var CACHE = { at: 0, jobs: [] };
+var TTL = 30 * 60 * 1000; // 30 min in-memory cache (per warm instance)
+
+function clean(s){ return String(s || "").replace(/\s+/g, " ").trim(); }
+
+async function getJSON(url){
+  var c = new AbortController(), t = setTimeout(function(){ c.abort(); }, 7000);
+  try{ var r = await fetch(url, { signal:c.signal, headers:{ "User-Agent":"Tailorline" } });
+       if(!r.ok) return null; return await r.json(); }
+  catch(e){ return null; }
+  finally{ clearTimeout(t); }
 }
-function salaryText(j){
-  if(j.salary_min && j.salary_max){
-    var a = Math.round(j.salary_min), b = Math.round(j.salary_max);
-    return a === b ? ("$" + a.toLocaleString()) : ("$" + a.toLocaleString() + " - $" + b.toLocaleString());
+
+async function fetchCompany(co){
+  if(co.src === "gh"){
+    var j = await getJSON("https://boards-api.greenhouse.io/v1/boards/" + co.token + "/jobs");
+    if(!j || !j.jobs) return [];
+    return j.jobs.map(function(x){
+      return { id:String(x.id), title:clean(x.title), company:co.name,
+        location:clean(x.location && x.location.name), created:x.updated_at || "",
+        url:x.absolute_url || "", gh:co.token, description:"" };
+    });
   }
-  return "";
+  // ashby
+  var a = await getJSON("https://api.ashbyhq.com/posting-api/job-board/" + co.token);
+  if(!a || !a.jobs) return [];
+  return a.jobs.map(function(x){
+    return { id:String(x.id||x.uuid||""), title:clean(x.title), company:co.name,
+      location:clean(x.location || (x.isRemote ? "Remote" : "")),
+      created:x.publishedDate || x.publishedAt || "",
+      url:x.jobUrl || x.applyUrl || "", gh:"", description:clean(x.descriptionPlain || "") };
+  });
+}
+
+async function loadAll(){
+  if(Date.now() - CACHE.at < TTL && CACHE.jobs.length) return CACHE.jobs;
+  var results = await Promise.all(COMPANIES.map(function(co){
+    return fetchCompany(co).catch(function(){ return []; });
+  }));
+  var all = [];
+  results.forEach(function(list){ list.forEach(function(j){ if(j.title && j.url) all.push(j); }); });
+  if(all.length){ CACHE = { at: Date.now(), jobs: all }; }
+  return all.length ? all : CACHE.jobs;
 }
 
 module.exports = async function handler(req, res){
-  var id = process.env.ADZUNA_APP_ID, key = process.env.ADZUNA_APP_KEY;
-  if(!id || !key){ res.status(500).json({ error: "Job search is not configured yet" }); return; }
   try{
     var qp = req.query || {};
-    var what = String(qp.q || "").slice(0, 120).trim();
-    var where = String(qp.where || "").slice(0, 80).trim();
-    var page = parseInt(qp.page, 10); if(!(page >= 1)) page = 1; if(page > 20) page = 20;
+    var what = clean(qp.q).toLowerCase().slice(0, 120);
+    var where = clean(qp.where).toLowerCase().slice(0, 80);
+    var page = parseInt(qp.page, 10); if(!(page >= 1)) page = 1; if(page > 50) page = 50;
     if(!what){ res.status(400).json({ error: "Enter a job title or keyword" }); return; }
 
-    var url = "https://api.adzuna.com/v1/api/jobs/us/search/" + page +
-      "?app_id=" + encodeURIComponent(id) + "&app_key=" + encodeURIComponent(key) +
-      "&results_per_page=10&what=" + encodeURIComponent(what) +
-      (where ? ("&where=" + encodeURIComponent(where)) : "") +
-      "&content-type=application/json";
+    var all = await loadAll();
+    var terms = what.split(/\s+/).filter(Boolean);
+    var matched = all.filter(function(j){
+      var hay = (j.title + " " + j.company + " " + j.location + " " + j.description).toLowerCase();
+      for(var i=0;i<terms.length;i++){ if(hay.indexOf(terms[i]) === -1) return false; }
+      if(where){ var loc=(j.location||"").toLowerCase(); if(loc.indexOf(where)===-1 && loc.indexOf("remote")===-1) return false; }
+      return true;
+    });
+    // newest first when we have dates
+    matched.sort(function(a,b){ return (Date.parse(b.created)||0) - (Date.parse(a.created)||0); });
 
-    var r = await fetch(url);
-    var data = await r.json();
-    if(!r.ok){ res.status(502).json({ error: (data && (data.exception || data.error)) || "Job service error" }); return; }
-
-    var jobs = (data.results || []).map(function(j){
-      return {
-        id: j.id,
-        title: clean(j.title),
-        company: clean(j.company && j.company.display_name),
-        location: clean(j.location && j.location.display_name),
-        created: j.created || "",
-        salary: salaryText(j),
-        description: clean(j.description),
-        url: j.redirect_url || ""
-      };
+    var per = 10, start = (page-1)*per;
+    var pageJobs = matched.slice(start, start+per).map(function(j){
+      return { id:j.id, title:j.title, company:j.company, location:j.location,
+        created:j.created, salary:"", description:j.description, url:j.url, source:"", gh:j.gh };
     });
 
-    // let Vercel's CDN cache identical searches for 10 min — keeps us well under Adzuna's free limits
-    res.setHeader("Cache-Control", "public, s-maxage=600, stale-while-revalidate=1200");
-    res.status(200).json({ jobs: jobs, count: data.count || jobs.length });
+    res.setHeader("Cache-Control", "public, s-maxage=1800, stale-while-revalidate=3600");
+    res.status(200).json({ jobs: pageJobs, total: matched.length });
   }catch(e){
     res.status(500).json({ error: "Unexpected error" });
   }
