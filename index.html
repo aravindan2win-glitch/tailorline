@@ -266,6 +266,27 @@
   .foot .in{border-top:1px solid var(--line);padding:22px 0 0;color:var(--faint);font-size:12px;line-height:1.6;max-width:80ch}
   .foot b{color:var(--muted)}
 
+  /* ---- view tabs ---- */
+  .tabs{display:inline-flex;gap:4px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:4px;margin:0 0 24px;box-shadow:var(--shadow)}
+  .tabs button{border:0;background:transparent;color:var(--muted);font:inherit;font-weight:600;font-size:14px;padding:9px 18px;border-radius:9px;cursor:pointer}
+  .tabs button[aria-pressed=true]{background:linear-gradient(150deg,var(--accent),var(--accent-ink));color:#fff;box-shadow:var(--shadow)}
+  #view-jobs[hidden],#view-tailor[hidden]{display:none}
+
+  /* ---- job board ---- */
+  .jobsearch{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+  .jobsearch input{flex:1;min-width:200px;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;color:var(--ink);font-family:inherit;font-size:14px;padding:12px 13px}
+  .jobsearch input:focus{border-color:var(--accent);background:var(--surface);outline:none}
+  .jobsmsg{font-size:13px;color:var(--muted);margin-bottom:14px}
+  .joblist{display:flex;flex-direction:column;gap:12px}
+  .jobcard{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px 20px;box-shadow:var(--shadow)}
+  .jobcard .jc-title{font-family:"Bricolage Grotesque",system-ui,sans-serif;font-weight:700;font-size:17px;letter-spacing:-.01em}
+  .jobcard .jc-meta{color:var(--accent-ink);font-size:13px;font-weight:600;margin-top:3px}
+  .jobcard .jc-bits{font-family:"IBM Plex Mono";font-size:11.5px;color:var(--faint);margin-top:7px}
+  .jobcard .jc-desc{color:var(--muted);font-size:13.5px;line-height:1.55;margin-top:10px}
+  .jobcard .jc-actions{display:flex;gap:9px;margin-top:15px}
+  .jobcard .jc-actions a.mini{text-decoration:none;display:inline-flex;align-items:center}
+  .jobmore{margin-top:2px}
+
   /* ---- template preview thumbnails ---- */
   .tplgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
   .tplgrid > button{display:flex;flex-direction:column;gap:7px;padding:7px;background:var(--surface-2);border:1px solid var(--line);border-radius:12px;cursor:pointer}
@@ -332,6 +353,12 @@
 </div>
 
 <div class="wrap">
+  <nav class="tabs" id="tabs" role="tablist" aria-label="Sections">
+    <button data-view="tailor" aria-pressed="true">Tailor résumé</button>
+    <button data-view="jobs" aria-pressed="false">Find jobs</button>
+  </nav>
+
+  <section id="view-tailor">
   <div class="lede">
     <h1>Tune one resume<br>to any job in seconds.</h1>
     <p>Paste your resume once, drop in a job description, and see the ATS match score before and after a keyword-aligned, human-sounding rewrite. Nothing leaves this page.</p>
@@ -486,11 +513,27 @@
       </div>
     </div>
   </div>
+  </section>
+
+  <section id="view-jobs" hidden>
+    <div class="lede">
+      <h1>Find your next role.</h1>
+      <p>Search live job postings from across the web, then tailor your resume to any one of them in a click. Applying takes you straight to the employer.</p>
+    </div>
+    <form id="jobsearch" class="jobsearch">
+      <input id="jq" type="text" placeholder="Job title, skill, or keyword (e.g. demand generation)" autocomplete="off">
+      <input id="jwhere" type="text" placeholder="City or state — US (optional)" autocomplete="off">
+      <button type="submit" class="go" style="width:auto;padding:12px 22px;margin-top:0">Search jobs</button>
+    </form>
+    <div id="jobsmsg" class="jobsmsg">Search a role above to see live openings.</div>
+    <div id="joblist" class="joblist"></div>
+    <div style="text-align:center"><button id="jobmore" class="mini jobmore" hidden>Load more jobs</button></div>
+  </section>
 </div>
 
 <div class="foot"><div class="in">
   <b>How the score works.</b> Tailorline pulls the most important terms from the job description, checks how many already appear in your resume, and weights them by how often the posting mentions them, then re-scores after the rewrite. Neither engine invents jobs, dates, or metrics — you stay in control of every word.<br><br>
-  <b>Two engines.</b> <b>Free</b> runs entirely in your browser on transparent rules (no key, no cost) — it applies an anti-AI tone pass and adds the skills you approve. <b>AI</b> sends the extracted text plus the JD to Gemini or OpenAI (your key) and returns cleanly structured HTML — far more reliable formatting on messy resumes. Because browsers block external API calls inside this in-app preview and any hosted-artifact sandbox, <b>AI mode only runs when you open the downloaded file in your own browser, or once the tool is hosted.</b> For a public product, the API key belongs on a small server, not shipped to users.
+  <b>How the rewrite works.</b> Your resume and the job description are sent to a secure server that runs the AI rewrite and returns cleanly formatted, ATS-readable text — your resume is not stored. If the service is momentarily busy, an instant in-browser formatter takes over so you always get a result. Job listings come from public job feeds; "Apply" takes you directly to the employer's own page.
 </div></div>
 
 <div class="toast" id="toast"></div>
@@ -1097,5 +1140,69 @@
   jdEl.addEventListener("input",checkReady);
   runBtn.addEventListener("click",run);
   checkReady();
+
+  /* ---------- view tabs ---------- */
+  function showView(v){
+    $("#view-tailor").hidden = v!=="tailor";
+    $("#view-jobs").hidden = v!=="jobs";
+    [].forEach.call(document.querySelectorAll("#tabs button"),function(b){ b.setAttribute("aria-pressed", b.dataset.view===v?"true":"false"); });
+    window.scrollTo({top:0,behavior:"smooth"});
+  }
+  $("#tabs").addEventListener("click",function(e){ var b=e.target.closest("button[data-view]"); if(b) showView(b.dataset.view); });
+
+  /* ---------- job board (live via /api/jobs) ---------- */
+  var jobPage=1, jobQ="", jobWhere="";
+  function timeAgo(iso){
+    if(!iso) return "";
+    var t=new Date(iso).getTime(); if(isNaN(t)) return "";
+    var day=Math.floor((Date.now()-t)/86400000);
+    if(day<=0) return "today"; if(day===1) return "1 day ago";
+    if(day<30) return day+" days ago";
+    var mo=Math.floor(day/30); return mo+(mo===1?" month ago":" months ago");
+  }
+  function jobCard(j){
+    var el=document.createElement("div"); el.className="jobcard";
+    var meta=[j.company,j.location].filter(Boolean).join(" · ");
+    var bits=[]; if(j.created) bits.push(timeAgo(j.created)); if(j.salary) bits.push(j.salary);
+    var desc=(j.description||""); if(desc.length>280) desc=desc.slice(0,280)+"…";
+    el.innerHTML=
+      '<div class="jc-title">'+esc(j.title||"Untitled role")+'</div>'+
+      '<div class="jc-meta">'+esc(meta)+'</div>'+
+      (bits.length?'<div class="jc-bits">'+esc(bits.join("   ·   "))+'</div>':'')+
+      '<div class="jc-desc">'+esc(desc)+'</div>'+
+      '<div class="jc-actions"></div>';
+    var actions=el.querySelector(".jc-actions");
+    var tailor=document.createElement("button"); tailor.className="mini primary"; tailor.textContent="Tailor my resume →";
+    tailor.addEventListener("click",function(){
+      jdEl.value=j.description||j.title||""; checkReady();
+      showView("tailor");
+      setTimeout(function(){ jdEl.scrollIntoView({behavior:"smooth",block:"center"}); jdEl.focus(); },250);
+      toast("Job loaded — add your resume and tailor");
+    });
+    var apply=document.createElement("a"); apply.className="mini"; apply.textContent="Apply ↗";
+    apply.href=j.url||"#"; apply.target="_blank"; apply.rel="noopener noreferrer";
+    actions.appendChild(tailor); actions.appendChild(apply);
+    return el;
+  }
+  function searchJobs(reset){
+    var list=$("#joblist"), msg=$("#jobsmsg"), more=$("#jobmore");
+    if(reset){ jobPage=1; list.innerHTML=""; jobQ=$("#jq").value.trim(); jobWhere=$("#jwhere").value.trim(); }
+    if(!jobQ){ msg.textContent="Type a job title or keyword to search."; return; }
+    msg.textContent = reset ? "Searching…" : "Loading more…"; more.hidden=true;
+    var url="/api/jobs?q="+encodeURIComponent(jobQ)+"&where="+encodeURIComponent(jobWhere)+"&page="+jobPage;
+    fetch(url).then(function(r){return r.json().then(function(j){return {ok:r.ok,j:j}})}).then(function(res){
+      if(!res.ok || !res.j || !res.j.jobs) throw new Error((res.j&&res.j.error)||"Search failed");
+      var jobs=res.j.jobs;
+      if(jobPage===1 && !jobs.length){ msg.textContent="No jobs found for that search. Try broader keywords."; return; }
+      var total = res.j.count ? res.j.count.toLocaleString() : jobs.length;
+      msg.textContent = total+' openings for "'+jobQ+'"'+(jobWhere?(" in "+jobWhere):"");
+      jobs.forEach(function(j){ list.appendChild(jobCard(j)); });
+      more.hidden = jobs.length<10;
+    }).catch(function(err){
+      msg.textContent = "Couldn't load jobs right now — "+((err&&err.message)||"try again shortly")+".";
+    });
+  }
+  $("#jobsearch").addEventListener("submit",function(e){ e.preventDefault(); searchJobs(true); });
+  $("#jobmore").addEventListener("click",function(){ jobPage++; searchJobs(false); });
 })();
 </script>
