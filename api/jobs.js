@@ -3,7 +3,9 @@
 // Apply links go straight to each employer's own careers page.
 // GET /api/jobs?q=<keywords>&where=<city/state>&page=<n>  ->  { jobs:[...], total }
 
+// Curated, verified company career boards. To add a company, add one line here.
 var COMPANIES = [
+  // ---- United States (Greenhouse) ----
   { src:"gh", token:"stripe",     name:"Stripe" },
   { src:"gh", token:"coinbase",   name:"Coinbase" },
   { src:"gh", token:"robinhood",  name:"Robinhood" },
@@ -20,8 +22,24 @@ var COMPANIES = [
   { src:"gh", token:"samsara",    name:"Samsara" },
   { src:"gh", token:"flexport",   name:"Flexport" },
   { src:"gh", token:"dropbox",    name:"Dropbox" },
+  { src:"gh", token:"lyft",       name:"Lyft" },
+  { src:"gh", token:"airbnb",     name:"Airbnb" },
+  { src:"gh", token:"affirm",     name:"Affirm" },
+  { src:"gh", token:"datadog",    name:"Datadog" },
+  { src:"gh", token:"gusto",      name:"Gusto" },
+  { src:"gh", token:"lattice",    name:"Lattice" },
+  { src:"gh", token:"checkr",     name:"Checkr" },
+  // ---- United States (Ashby) ----
   { src:"ashby", token:"openai",  name:"OpenAI" },
-  { src:"ashby", token:"notion",  name:"Notion" }
+  { src:"ashby", token:"notion",  name:"Notion" },
+  // ---- India (Greenhouse) ----
+  { src:"gh", token:"razorpaysoftwareprivatelimited", name:"Razorpay" },
+  { src:"gh", token:"groww",      name:"Groww" },
+  // ---- India (Lever) ----
+  { src:"lever", token:"cred",       name:"CRED" },
+  { src:"lever", token:"mindtickle", name:"Mindtickle" },
+  { src:"lever", token:"porter",     name:"Porter" },
+  { src:"lever", token:"meesho",     name:"Meesho" }
 ];
 
 var CACHE = { at: 0, jobs: [] };
@@ -47,15 +65,27 @@ async function fetchCompany(co){
         url:x.absolute_url || "", gh:co.token, description:"" };
     });
   }
-  // ashby
-  var a = await getJSON("https://api.ashbyhq.com/posting-api/job-board/" + co.token);
-  if(!a || !a.jobs) return [];
-  return a.jobs.map(function(x){
-    return { id:String(x.id||x.uuid||""), title:clean(x.title), company:co.name,
-      location:clean(x.location || (x.isRemote ? "Remote" : "")),
-      created:x.publishedDate || x.publishedAt || "",
-      url:x.jobUrl || x.applyUrl || "", gh:"", description:clean(x.descriptionPlain || "") };
-  });
+  if(co.src === "lever"){
+    var l = await getJSON("https://api.lever.co/v0/postings/" + co.token + "?mode=json");
+    if(!Array.isArray(l)) return [];
+    return l.map(function(x){
+      var loc = (x.categories && x.categories.location) || "";
+      return { id:String(x.id || ""), title:clean(x.text), company:co.name,
+        location:clean(loc), created: x.createdAt ? new Date(x.createdAt).toISOString() : "",
+        url:x.hostedUrl || x.applyUrl || "", gh:"", description:clean(x.descriptionPlain || "") };
+    });
+  }
+  if(co.src === "ashby"){
+    var a = await getJSON("https://api.ashbyhq.com/posting-api/job-board/" + co.token);
+    if(!a || !a.jobs) return [];
+    return a.jobs.map(function(x){
+      return { id:String(x.id||x.uuid||""), title:clean(x.title), company:co.name,
+        location:clean(x.location || (x.isRemote ? "Remote" : "")),
+        created:x.publishedDate || x.publishedAt || "",
+        url:x.jobUrl || x.applyUrl || "", gh:"", description:clean(x.descriptionPlain || "") };
+    });
+  }
+  return [];
 }
 
 async function loadAll(){
