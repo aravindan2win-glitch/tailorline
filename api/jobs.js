@@ -42,6 +42,9 @@ var COMPANIES = [
   { src:"lever", token:"meesho",     name:"Meesho" }
 ];
 
+// which company tokens are India-based (everything else is treated as US)
+var INDIA_TOKENS = { "razorpaysoftwareprivatelimited":1, "groww":1, "cred":1, "mindtickle":1, "porter":1, "meesho":1 };
+
 var CACHE = { at: 0, jobs: [] };
 var TTL = 30 * 60 * 1000; // 30 min in-memory cache (per warm instance)
 
@@ -62,7 +65,7 @@ async function fetchCompany(co){
     return j.jobs.map(function(x){
       return { id:String(x.id), title:clean(x.title), company:co.name,
         location:clean(x.location && x.location.name), created:x.updated_at || "",
-        url:x.absolute_url || "", gh:co.token, description:"" };
+        url:x.absolute_url || "", gh:co.token, description:"", region:(INDIA_TOKENS[co.token]?"in":"us") };
     });
   }
   if(co.src === "lever"){
@@ -72,7 +75,7 @@ async function fetchCompany(co){
       var loc = (x.categories && x.categories.location) || "";
       return { id:String(x.id || ""), title:clean(x.text), company:co.name,
         location:clean(loc), created: x.createdAt ? new Date(x.createdAt).toISOString() : "",
-        url:x.hostedUrl || x.applyUrl || "", gh:"", description:clean(x.descriptionPlain || "") };
+        url:x.hostedUrl || x.applyUrl || "", gh:"", description:clean(x.descriptionPlain || ""), region:(INDIA_TOKENS[co.token]?"in":"us") };
     });
   }
   if(co.src === "ashby"){
@@ -82,7 +85,7 @@ async function fetchCompany(co){
       return { id:String(x.id||x.uuid||""), title:clean(x.title), company:co.name,
         location:clean(x.location || (x.isRemote ? "Remote" : "")),
         created:x.publishedDate || x.publishedAt || "",
-        url:x.jobUrl || x.applyUrl || "", gh:"", description:clean(x.descriptionPlain || "") };
+        url:x.jobUrl || x.applyUrl || "", gh:"", description:clean(x.descriptionPlain || ""), region:(INDIA_TOKENS[co.token]?"in":"us") };
     });
   }
   return [];
@@ -109,10 +112,16 @@ module.exports = async function handler(req, res){
 
     var all = await loadAll();
     var terms = what.split(/\s+/).filter(Boolean);
+    // if the location box names a country, filter by the job's country tag; otherwise treat it as a city/text match
+    var wcountry = /^(india|in|bharat)$/.test(where) ? "in"
+                 : /^(us|usa|u\.s\.|united states|america)$/.test(where) ? "us" : null;
     var matched = all.filter(function(j){
       var hay = (j.title + " " + j.company + " " + j.location + " " + j.description).toLowerCase();
       for(var i=0;i<terms.length;i++){ if(hay.indexOf(terms[i]) === -1) return false; }
-      if(where){ var loc=(j.location||"").toLowerCase(); if(loc.indexOf(where)===-1 && loc.indexOf("remote")===-1) return false; }
+      if(where){
+        if(wcountry){ if(j.region !== wcountry) return false; }
+        else if((j.location||"").toLowerCase().indexOf(where) === -1) return false;
+      }
       return true;
     });
     // newest first when we have dates
