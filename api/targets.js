@@ -9,9 +9,9 @@ var SYS = [
   "You are a sharp career advisor. Read the candidate's resume and do these things:",
   "1. Identify the FUNCTION/role they are targeting next (infer from their latest title and strongest skills).",
   "2. Determine the candidate's country from the resume (locations, phone code). Use \"US\" or \"India\" when clear, otherwise your best guess.",
-  "3. List EVERY distinct employer from their work history, most recent first, in the \"employers\" array (company names only, deduplicated, no roles or dates).",
+  "3. List EVERY distinct employer from their work history in the \"employers\" array, most recent first (company names only, deduplicated, no roles or dates). This array MUST never be empty — always include at least the most recent employer.",
   "4. Pick the ANCHOR company: if an \"ANCHOR COMPANY\" is given at the end of the resume block, use exactly that company; otherwise use their MOST RECENT employer. Put the anchor's name in \"lastCompany\".",
-  "5. Suggest EXACTLY 8 real, currently-operating companies the candidate should target next: peers of the ANCHOR company by industry, size, and stage, where hiring for that function is plausible. Strongly prefer companies based in the candidate's OWN country. Never include the anchor company itself. Favour well-known companies.",
+  "5. Suggest EXACTLY 8 real, currently-operating companies the candidate should target next: peers of the ANCHOR company by industry, size, and stage, where hiring for that function is plausible. Strongly prefer companies based in the candidate's OWN country. Never include the anchor company itself. If a \"DO NOT REPEAT\" list is given, none of your 8 may appear on it — suggest 8 fresh, different companies. Favour well-known companies.",
   "",
   "For each suggested company give: a one-line reason it fits (industry / size / stage), the company's careers page URL if you know it, and your best guess of its job-board slug on Greenhouse, Lever and Ashby (usually the lowercase company name with no spaces; leave blank if unsure).",
   "",
@@ -90,9 +90,11 @@ module.exports = async function handler(req, res){
     var resume = String(body.resume || "").slice(0, 16000);
     if(resume.trim().length < 60){ res.status(400).json({ error: "Add your resume first" }); return; }
     var anchor = clean(body.anchorCompany || "").slice(0, 120);
+    var exclude = Array.isArray(body.exclude) ? body.exclude.map(clean).filter(Boolean).slice(0, 40) : [];
 
     var userText = "RESUME:\n" + resume;
     if(anchor){ userText += "\n\nANCHOR COMPANY (find peers of this one, not the most recent employer): " + anchor; }
+    if(exclude.length){ userText += "\n\nDO NOT REPEAT (already shown — suggest different companies): " + exclude.join(", "); }
 
     var model = process.env.GEMINI_MODEL || "gemini-3.6-flash";
     var url = "https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(model) + ":generateContent?key=" + encodeURIComponent(key);
