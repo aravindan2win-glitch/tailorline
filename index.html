@@ -1199,9 +1199,10 @@
       tgtMsg.textContent="Finding companies like your last employer and checking who's hiring… this can take ~20 seconds.";
       tgtList.innerHTML="";
       fetch("/api/targets",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({resume:resume})})
-        .then(function(r){return r.json().then(function(j){return {ok:r.ok,j:j}})})
+        .then(function(r){ return r.text().then(function(tx){ var j=null; try{ j=JSON.parse(tx); }catch(e){} return {ok:r.ok,j:j}; }); })
         .then(function(res){
-          if(!res.ok || !res.j){ throw new Error((res.j&&res.j.error)||"Something went wrong"); }
+          if(!res.j){ throw new Error(res.ok?"The server sent back an unexpected response — try again in a moment.":"The AI is busy or the request timed out — give it a few seconds and tap the button again."); }
+          if(!res.ok){ throw new Error(res.j.error||"Something went wrong"); }
           var cos=res.j.companies||[];
           if(!cos.length){ tgtMsg.textContent="Couldn't find good matches this time — try again in a moment."; return; }
           var hiring=cos.filter(function(c){return c.hiring}).length;
