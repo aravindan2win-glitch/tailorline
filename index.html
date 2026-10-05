@@ -273,6 +273,12 @@
   #view-jobs[hidden],#view-tailor[hidden],#view-targets[hidden]{display:none}
 
   /* ---- target companies ---- */
+  .tgtctrl{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:16px;padding:14px 16px;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow)}
+  .tgtctrl label.fld{font-size:12.5px;color:var(--muted)}
+  .tgtsel{background:var(--surface-2);border:1px solid var(--line);border-radius:9px;color:var(--ink);font-family:inherit;font-size:13.5px;font-weight:600;padding:9px 11px;min-width:200px;cursor:pointer}
+  .tgtsel:focus{border-color:var(--accent);outline:none}
+  #tgtother{flex:1;min-width:180px}
+  .tgtctrl #tgtgo{padding:9px 16px}
   .jc-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
   .tag-hot{background:#e6f7ec;color:#137a3e;border:1px solid #bce7cd;border-radius:999px;padding:2px 9px;font-size:12px;font-weight:600}
   .tgt-roles{margin:8px 0 0;padding-left:18px}
@@ -543,6 +549,12 @@
       <p>Don't just apply where you already know. Tailorline reads your résumé, finds companies like your most recent employer — same industry, size and stage, in your country — and checks their real job boards to show which are actually hiring for your function right now.</p>
     </div>
     <button class="go" id="findtargets" style="width:auto;padding:13px 24px">Find my target companies</button>
+    <div id="tgtctrl" class="tgtctrl" hidden>
+      <label class="fld" for="tgtanchor" style="margin:0">Find companies similar to</label>
+      <select id="tgtanchor" class="tgtsel"></select>
+      <input id="tgtother" type="text" placeholder="Type any company name" hidden>
+      <button id="tgtgo" class="mini primary">Update</button>
+    </div>
     <p class="jobsmsg" id="tgtmsg" style="margin-top:16px">Click above — I read your most recent company and target role straight from the résumé in the “Tailor résumé” tab.</p>
     <div id="tgtlist" class="joblist"></div>
   </section>
@@ -1170,6 +1182,8 @@
 
   /* ---------- target companies (live via /api/targets) ---------- */
   var tgtBtn=$("#findtargets"), tgtMsg=$("#tgtmsg"), tgtList=$("#tgtlist");
+  var tgtCtrl=$("#tgtctrl"), tgtSel=$("#tgtanchor"), tgtOther=$("#tgtother"), tgtGo=$("#tgtgo");
+  var OTHER="__other__";
   function targetCard(c, func){
     var el=document.createElement("div"); el.className="jobcard";
     var head='<div class="jc-top"><span class="jc-title">'+esc(c.name)+'</span>';
@@ -1188,31 +1202,58 @@
     el.innerHTML=head+why+links;
     return el;
   }
-  if(tgtBtn){
-    tgtBtn.addEventListener("click",function(){
-      var resume=(resumeEl.value||"").trim();
-      if(resume.length<60){
-        tgtMsg.innerHTML='Add your résumé in the <b>“Tailor résumé”</b> tab first — I read your most recent company and target role from it.';
-        return;
-      }
-      tgtBtn.disabled=true;
-      tgtMsg.textContent="Finding companies like your last employer and checking who's hiring… this can take ~20 seconds.";
-      tgtList.innerHTML="";
-      fetch("/api/targets",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({resume:resume})})
-        .then(function(r){ return r.text().then(function(tx){ var j=null; try{ j=JSON.parse(tx); }catch(e){} return {ok:r.ok,j:j}; }); })
-        .then(function(res){
-          if(!res.j){ throw new Error(res.ok?"The server sent back an unexpected response — try again in a moment.":"The AI is busy or the request timed out — give it a few seconds and tap the button again."); }
-          if(!res.ok){ throw new Error(res.j.error||"Something went wrong"); }
-          var cos=res.j.companies||[];
-          if(!cos.length){ tgtMsg.textContent="Couldn't find good matches this time — try again in a moment."; return; }
-          var hiring=cos.filter(function(c){return c.hiring}).length;
-          tgtMsg.innerHTML="Based on <b>"+esc(res.j.lastCompany||"your last role")+"</b>, targeting <b>"+esc(res.j.targetFunction||"your function")+"</b>"+(res.j.region?(" in "+esc(res.j.region)):"")+". "+(hiring?("<b>"+hiring+"</b> of these are hiring that function right now — those are listed first."):"Here are strong peers worth targeting.");
-          cos.forEach(function(c){ tgtList.appendChild(targetCard(c, res.j.targetFunction)); });
-        })
-        .catch(function(err){ tgtMsg.textContent="Couldn't load suggestions right now — "+((err&&err.message)||"try again shortly")+"."; })
-        .then(function(){ tgtBtn.disabled=false; });
+  // build the "find companies similar to" dropdown from the résumé's employer list + an "Other" option
+  function fillAnchors(employers, selected){
+    if(!tgtSel) return;
+    tgtSel.innerHTML="";
+    var added={};
+    function opt(val,label){ var o=document.createElement("option"); o.value=val; o.textContent=label; tgtSel.appendChild(o); }
+    (employers||[]).forEach(function(e){ var k=e.toLowerCase(); if(e && !added[k]){ added[k]=1; opt(e,e); } });
+    // make sure the currently-anchored company is present and selected
+    if(selected && !added[selected.toLowerCase()]){ opt(selected,selected); }
+    opt(OTHER,"Other company…");
+    tgtSel.value = selected || (employers&&employers[0]) || OTHER;
+    if(tgtOther){ tgtOther.hidden = tgtSel.value!==OTHER; }
+  }
+  function loadTargets(anchor){
+    var resume=(resumeEl.value||"").trim();
+    if(resume.length<60){
+      tgtMsg.innerHTML='Add your résumé in the <b>“Tailor résumé”</b> tab first — I read your companies and target role from it.';
+      return;
+    }
+    tgtBtn.disabled=true; if(tgtGo) tgtGo.disabled=true;
+    tgtMsg.textContent = anchor
+      ? ("Finding companies like "+anchor+" and checking who's hiring… this can take a few seconds.")
+      : "Finding companies like your last employer and checking who's hiring… this can take a few seconds.";
+    tgtList.innerHTML="";
+    var payload={resume:resume}; if(anchor){ payload.anchorCompany=anchor; }
+    fetch("/api/targets",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)})
+      .then(function(r){ return r.text().then(function(tx){ var j=null; try{ j=JSON.parse(tx); }catch(e){} return {ok:r.ok,j:j}; }); })
+      .then(function(res){
+        if(!res.j){ throw new Error(res.ok?"The server sent back an unexpected response — try again in a moment.":"The AI is busy or the request timed out — give it a few seconds and tap the button again."); }
+        if(!res.ok){ throw new Error(res.j.error||"Something went wrong"); }
+        var cos=res.j.companies||[];
+        // reveal + populate the anchor picker once we know the résumé's employers
+        fillAnchors(res.j.employers, res.j.lastCompany);
+        if(tgtCtrl) tgtCtrl.hidden=false;
+        if(!cos.length){ tgtMsg.textContent="Couldn't find good matches this time — try again, or pick a different company above."; return; }
+        var hiring=cos.filter(function(c){return c.hiring}).length;
+        tgtMsg.innerHTML="Based on <b>"+esc(res.j.lastCompany||"your last role")+"</b>, targeting <b>"+esc(res.j.targetFunction||"your function")+"</b>"+(res.j.region?(" in "+esc(res.j.region)):"")+". "+(hiring?("<b>"+hiring+"</b> of these are hiring that function right now — those are listed first."):"Here are strong peers worth targeting.")+" <span style=\"color:var(--faint)\">Want a different path? Pick another company above.</span>";
+        cos.forEach(function(c){ tgtList.appendChild(targetCard(c, res.j.targetFunction)); });
+      })
+      .catch(function(err){ tgtMsg.textContent="Couldn't load suggestions right now — "+((err&&err.message)||"try again shortly")+"."; })
+      .then(function(){ tgtBtn.disabled=false; if(tgtGo) tgtGo.disabled=false; });
+  }
+  if(tgtBtn){ tgtBtn.addEventListener("click",function(){ loadTargets(null); }); }
+  if(tgtSel){ tgtSel.addEventListener("change",function(){ if(tgtOther){ tgtOther.hidden = tgtSel.value!==OTHER; if(!tgtOther.hidden){ tgtOther.focus(); } } }); }
+  if(tgtGo){
+    tgtGo.addEventListener("click",function(){
+      var anchor = (tgtSel.value===OTHER) ? (tgtOther.value||"").trim() : tgtSel.value;
+      if(tgtSel.value===OTHER && !anchor){ tgtOther.focus(); return; }
+      loadTargets(anchor);
     });
   }
+  if(tgtOther){ tgtOther.addEventListener("keydown",function(e){ if(e.key==="Enter"){ e.preventDefault(); tgtGo.click(); } }); }
 
   /* ---------- job board (live via /api/jobs) ---------- */
   var jobPage=1, jobQ="", jobWhere="";
