@@ -2,19 +2,21 @@
 // From the candidate's resume, the AI finds peer companies of their most recent employer (same
 // country, similar industry/size/stage), then we best-effort verify which are hiring that function
 // by checking each company's real ATS board (Greenhouse / Lever / Ashby).
-// POST /api/targets { resume }  ->  { lastCompany, targetFunction, region, companies:[...] }
+// POST /api/targets { resume, anchorCompany? }  ->  { lastCompany, targetFunction, region, employers:[...], companies:[...] }
 // Env: GEMINI_API_KEY (same key as /api/tailor), optional GEMINI_MODEL.
 
 var SYS = [
-  "You are a sharp career advisor. Read the candidate's resume and do three things:",
-  "1. Identify their MOST RECENT employer, and the FUNCTION/role they are targeting next (infer from their latest title and strongest skills).",
+  "You are a sharp career advisor. Read the candidate's resume and do these things:",
+  "1. Identify the FUNCTION/role they are targeting next (infer from their latest title and strongest skills).",
   "2. Determine the candidate's country from the resume (locations, phone code). Use \"US\" or \"India\" when clear, otherwise your best guess.",
-  "3. Suggest EXACTLY 8 real, currently-operating companies the candidate should target next: peers of their most recent employer by industry, size, and stage, where hiring for that function is plausible. Strongly prefer companies based in the candidate's OWN country. Never include the candidate's current or most-recent employer. Favour well-known companies.",
+  "3. List EVERY distinct employer from their work history, most recent first, in the \"employers\" array (company names only, deduplicated, no roles or dates).",
+  "4. Pick the ANCHOR company: if an \"ANCHOR COMPANY\" is given at the end of the resume block, use exactly that company; otherwise use their MOST RECENT employer. Put the anchor's name in \"lastCompany\".",
+  "5. Suggest EXACTLY 8 real, currently-operating companies the candidate should target next: peers of the ANCHOR company by industry, size, and stage, where hiring for that function is plausible. Strongly prefer companies based in the candidate's OWN country. Never include the anchor company itself. Favour well-known companies.",
   "",
-  "For each company give: a one-line reason it fits (industry / size / stage), the company's careers page URL if you know it, and your best guess of its job-board slug on Greenhouse, Lever and Ashby (usually the lowercase company name with no spaces; leave blank if unsure).",
+  "For each suggested company give: a one-line reason it fits (industry / size / stage), the company's careers page URL if you know it, and your best guess of its job-board slug on Greenhouse, Lever and Ashby (usually the lowercase company name with no spaces; leave blank if unsure).",
   "",
   "Output ONLY valid minified JSON (no markdown, no commentary), exactly this shape:",
-  '{"lastCompany":"","targetFunction":"","region":"","companies":[{"name":"","why":"","careersUrl":"","gh":"","lever":"","ashby":""}]}'
+  '{"lastCompany":"","targetFunction":"","region":"","employers":[""],"companies":[{"name":"","why":"","careersUrl":"","gh":"","lever":"","ashby":""}]}'
 ].join("\n");
 
 function clean(s){ return String(s || "").replace(/\s+/g, " ").trim(); }
@@ -87,12 +89,16 @@ module.exports = async function handler(req, res){
     body = body || {};
     var resume = String(body.resume || "").slice(0, 16000);
     if(resume.trim().length < 60){ res.status(400).json({ error: "Add your resume first" }); return; }
+    var anchor = clean(body.anchorCompany || "").slice(0, 120);
+
+    var userText = "RESUME:\n" + resume;
+    if(anchor){ userText += "\n\nANCHOR COMPANY (find peers of this one, not the most recent employer): " + anchor; }
 
     var model = process.env.GEMINI_MODEL || "gemini-3.6-flash";
     var url = "https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(model) + ":generateContent?key=" + encodeURIComponent(key);
     var out = await callGemini(url, {
       systemInstruction:{ parts:[{ text:SYS }] },
-      contents:[{ role:"user", parts:[{ text:"RESUME:\n" + resume }] }],
+      contents:[{ role:"user", parts:[{ text:userText }] }],
       generationConfig:{ temperature:0.5, maxOutputTokens:2048 }
     });
     var data = out.data;
@@ -122,10 +128,18 @@ module.exports = async function handler(req, res){
     enriched = enriched.filter(function(c){ return c.name; });
     enriched.sort(function(x, y){ return (y.hiring?1:0) - (x.hiring?1:0) || (y.matchCount - x.matchCount); });
 
+    var employers = (parsed.employers || []).map(clean).filter(Boolean);
+    // dedupe (case-insensitive), keep order, cap at 8
+    var seenE = {}, emps = [];
+    employers.forEach(function(e){ var k=e.toLowerCase(); if(!seenE[k]){ seenE[k]=1; emps.push(e); } });
+    emps = emps.slice(0, 8);
+
     res.status(200).json({
       lastCompany: clean(parsed.lastCompany),
       targetFunction: clean(parsed.targetFunction),
       region: clean(parsed.region),
+      anchor: anchor,
+      employers: emps,
       companies: enriched
     });
   }catch(e){
