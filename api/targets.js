@@ -20,7 +20,7 @@ var SYS = [
 function clean(s){ return String(s || "").replace(/\s+/g, " ").trim(); }
 
 async function getJSON(url){
-  var c = new AbortController(), t = setTimeout(function(){ c.abort(); }, 4500);
+  var c = new AbortController(), t = setTimeout(function(){ c.abort(); }, 3000);
   try{ var r = await fetch(url, { signal:c.signal, headers:{ "User-Agent":"Tailorline" } }); if(!r.ok) return null; return await r.json(); }
   catch(e){ return null; } finally{ clearTimeout(t); }
 }
@@ -56,9 +56,10 @@ async function verifyCompany(co, terms){
 
 function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
 
-// Call Gemini, retrying through transient "model overloaded / high demand" spikes (429 / 500 / 502 / 503).
+// Call Gemini, retrying ONCE through a transient "high demand" spike.
+// Kept deliberately short so the whole function finishes well under the serverless time limit.
 async function callGemini(url, payload){
-  var attempts = 4, delays = [1200, 2500, 4500]; // ~8s worst case, well inside the 60s budget
+  var attempts = 2, delays = [1500]; // one quick retry; ~1.5s of waiting at most
   var last = { ok:false, data:{ error:{ message:"AI error" } } };
   for(var i=0;i<attempts;i++){
     try{
