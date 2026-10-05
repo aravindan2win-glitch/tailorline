@@ -270,7 +270,13 @@
   .tabs{display:inline-flex;gap:4px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:4px;margin:0 0 24px;box-shadow:var(--shadow)}
   .tabs button{border:0;background:transparent;color:var(--muted);font:inherit;font-weight:600;font-size:14px;padding:9px 18px;border-radius:9px;cursor:pointer}
   .tabs button[aria-pressed=true]{background:linear-gradient(150deg,var(--accent),var(--accent-ink));color:#fff;box-shadow:var(--shadow)}
-  #view-jobs[hidden],#view-tailor[hidden]{display:none}
+  #view-jobs[hidden],#view-tailor[hidden],#view-targets[hidden]{display:none}
+
+  /* ---- target companies ---- */
+  .jc-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .tag-hot{background:#e6f7ec;color:#137a3e;border:1px solid #bce7cd;border-radius:999px;padding:2px 9px;font-size:12px;font-weight:600}
+  .tgt-roles{margin:8px 0 0;padding-left:18px}
+  .tgt-roles li{margin:3px 0}
 
   /* ---- job board ---- */
   .jobsearch{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
@@ -356,6 +362,7 @@
   <nav class="tabs" id="tabs" role="tablist" aria-label="Sections">
     <button data-view="tailor" aria-pressed="true">Tailor résumé</button>
     <button data-view="jobs" aria-pressed="false">Find jobs</button>
+    <button data-view="targets" aria-pressed="false">Target companies</button>
   </nav>
 
   <section id="view-tailor">
@@ -528,6 +535,16 @@
     <div id="jobsmsg" class="jobsmsg">Search a role above to see live openings.</div>
     <div id="joblist" class="joblist"></div>
     <div style="text-align:center"><button id="jobmore" class="mini jobmore" hidden>Load more jobs</button></div>
+  </section>
+
+  <section id="view-targets" hidden>
+    <div class="lede">
+      <h1>Target the right companies.</h1>
+      <p>Don't just apply where you already know. Tailorline reads your résumé, finds companies like your most recent employer — same industry, size and stage, in your country — and checks their real job boards to show which are actually hiring for your function right now.</p>
+    </div>
+    <button class="go" id="findtargets" style="width:auto;padding:13px 24px">Find my target companies</button>
+    <p class="jobsmsg" id="tgtmsg" style="margin-top:16px">Click above — I read your most recent company and target role straight from the résumé in the “Tailor résumé” tab.</p>
+    <div id="tgtlist" class="joblist"></div>
   </section>
 </div>
 
@@ -1040,7 +1057,7 @@
     // jsPDF core fonts are Latin-1 only — map symbols they can't render to safe equivalents
     function san(s){
       return String(s||"")
-        .replace(/ /g," ")
+        .replace(/ /g," ")
         .replace(/₹\s?/g,"Rs. ")
         .replace(/[‘’‛]/g,"'")
         .replace(/[“”]/g,'"')
@@ -1145,10 +1162,56 @@
   function showView(v){
     $("#view-tailor").hidden = v!=="tailor";
     $("#view-jobs").hidden = v!=="jobs";
+    $("#view-targets").hidden = v!=="targets";
     [].forEach.call(document.querySelectorAll("#tabs button"),function(b){ b.setAttribute("aria-pressed", b.dataset.view===v?"true":"false"); });
     window.scrollTo({top:0,behavior:"smooth"});
   }
   $("#tabs").addEventListener("click",function(e){ var b=e.target.closest("button[data-view]"); if(b) showView(b.dataset.view); });
+
+  /* ---------- target companies (live via /api/targets) ---------- */
+  var tgtBtn=$("#findtargets"), tgtMsg=$("#tgtmsg"), tgtList=$("#tgtlist");
+  function targetCard(c, func){
+    var el=document.createElement("div"); el.className="jobcard";
+    var head='<div class="jc-top"><span class="jc-title">'+esc(c.name)+'</span>';
+    if(c.hiring){ head+=' <span class="tag-hot">✓ '+c.matchCount+' matching role'+(c.matchCount>1?'s':'')+'</span>'; }
+    head+='</div>';
+    var why=c.why?('<div class="jc-desc">'+esc(c.why)+'</div>'):'';
+    var links;
+    if(c.hiring && c.roles && c.roles.length){
+      links='<ul class="tgt-roles">'+c.roles.map(function(r){
+        return '<li><a href="'+esc(r.url)+'" target="_blank" rel="noopener noreferrer">'+esc(r.title)+' ↗</a></li>';
+      }).join('')+'</ul>';
+    } else {
+      var url=c.careersUrl||('https://www.google.com/search?q='+encodeURIComponent(c.name+' careers '+(func||'')));
+      links='<div class="jc-actions"><a class="mini" href="'+esc(url)+'" target="_blank" rel="noopener noreferrer">See their openings ↗</a></div>';
+    }
+    el.innerHTML=head+why+links;
+    return el;
+  }
+  if(tgtBtn){
+    tgtBtn.addEventListener("click",function(){
+      var resume=(resumeEl.value||"").trim();
+      if(resume.length<60){
+        tgtMsg.innerHTML='Add your résumé in the <b>“Tailor résumé”</b> tab first — I read your most recent company and target role from it.';
+        return;
+      }
+      tgtBtn.disabled=true;
+      tgtMsg.textContent="Finding companies like your last employer and checking who's hiring… this can take ~20 seconds.";
+      tgtList.innerHTML="";
+      fetch("/api/targets",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({resume:resume})})
+        .then(function(r){return r.json().then(function(j){return {ok:r.ok,j:j}})})
+        .then(function(res){
+          if(!res.ok || !res.j){ throw new Error((res.j&&res.j.error)||"Something went wrong"); }
+          var cos=res.j.companies||[];
+          if(!cos.length){ tgtMsg.textContent="Couldn't find good matches this time — try again in a moment."; return; }
+          var hiring=cos.filter(function(c){return c.hiring}).length;
+          tgtMsg.innerHTML="Based on <b>"+esc(res.j.lastCompany||"your last role")+"</b>, targeting <b>"+esc(res.j.targetFunction||"your function")+"</b>"+(res.j.region?(" in "+esc(res.j.region)):"")+". "+(hiring?("<b>"+hiring+"</b> of these are hiring that function right now — those are listed first."):"Here are strong peers worth targeting.");
+          cos.forEach(function(c){ tgtList.appendChild(targetCard(c, res.j.targetFunction)); });
+        })
+        .catch(function(err){ tgtMsg.textContent="Couldn't load suggestions right now — "+((err&&err.message)||"try again shortly")+"."; })
+        .then(function(){ tgtBtn.disabled=false; });
+    });
+  }
 
   /* ---------- job board (live via /api/jobs) ---------- */
   var jobPage=1, jobQ="", jobWhere="";
