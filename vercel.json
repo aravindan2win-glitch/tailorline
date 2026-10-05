@@ -1,0 +1,5 @@
+{
+  "functions": {
+    "api/targets.js": { "maxDuration": 60 }
+  }
+}
