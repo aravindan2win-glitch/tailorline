@@ -4,6 +4,9 @@
 //
 // Required environment variable:  GEMINI_API_KEY
 // Optional environment variable:  GEMINI_MODEL   (default: gemini-3.6-flash)
+// Accounts/limits use SUPABASE_SERVICE_KEY via ./_lib (sign-in required; 5 free tailors/week).
+
+var lib = require("./_lib");
 
 var SYS = [
   "You are an expert resume writer and ATS specialist. Rewrite the candidate's resume to match the target job description while keeping every fact strictly truthful.",
@@ -60,6 +63,23 @@ module.exports = async function handler(req, res){
       return;
     }
 
+    // ---- account gate: sign-in required; free users get 5 tailors / week ----
+    var user = await lib.verifyUser(req);
+    if(!user){ res.status(401).json({ error: "Please sign in to tailor your résumé." }); return; }
+    var passActive = false, overLimit = false;
+    try{
+      var pass = await lib.getPass(user.email);
+      passActive = !!(pass && pass.active);
+      if(!passActive){
+        var usage = await lib.getTailorUsage(user.email);
+        if(usage.count >= lib.TAILOR_FREE_PER_WEEK) overLimit = true;
+      }
+    }catch(e){ /* fail open on a lookup hiccup so the product keeps working */ }
+    if(overLimit){
+      res.status(402).json({ error: "You've used your 5 free tailors this week — unlock unlimited or come back next week." });
+      return;
+    }
+
     var fwd = req.headers["x-forwarded-for"] || "";
     var ip = (Array.isArray(fwd) ? fwd[0] : fwd).split(",")[0].trim() || "unknown";
     if(limited(ip)){ res.status(429).json({ error: "Too many requests — please try again in a little while" }); return; }
@@ -67,14 +87,14 @@ module.exports = async function handler(req, res){
     var model = process.env.GEMINI_MODEL || "gemini-3.6-flash";
     var url = "https://generativelanguage.googleapis.com/v1beta/models/" +
       encodeURIComponent(model) + ":generateContent?key=" + encodeURIComponent(key);
-    var user = "--- TARGET JOB DESCRIPTION ---\n" + jd + "\n\n--- BASE RESUME TEXT ---\n" + resume;
+    var user_msg = "--- TARGET JOB DESCRIPTION ---\n" + jd + "\n\n--- BASE RESUME TEXT ---\n" + resume;
 
     var r = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: SYS }] },
-        contents: [{ role: "user", parts: [{ text: user }] }],
+        contents: [{ role: "user", parts: [{ text: user_msg }] }],
         generationConfig: { temperature: 0.4, maxOutputTokens: 8192 }
       })
     });
@@ -90,6 +110,9 @@ module.exports = async function handler(req, res){
     html = html.replace(/```html?/gi, "").replace(/```/g, "")
                .replace(/<script[\s\S]*?<\/script>/gi, "")
                .trim();
+
+    // Count this successful tailor against the weekly free allowance (free users only).
+    if(!passActive){ try{ await lib.incTailorUsage(user.email); }catch(e){} }
 
     res.status(200).json({ html: html });
   }catch(e){
