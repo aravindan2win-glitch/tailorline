@@ -604,15 +604,41 @@
       <h2 style="font-size:20px;margin-bottom:6px">Your account</h2>
       <p class="mini" style="margin:0 0 4px">Signed in as <b id="acct-email"></b></p>
       <p class="mini" id="acct-pass" style="margin:0 0 14px"></p>
-      <button class="go" id="acct-upgrade" style="margin-bottom:8px">Unlock unlimited jobs</button>
+      <button class="go" id="acct-upgrade" style="margin-bottom:8px">Unlock unlimited</button>
       <button class="mini" id="authsignout">Sign out</button>
     </div>
+  </div>
+</div>
+
+<!-- Paywall modal -->
+<div class="modal" id="paywall" hidden>
+  <div class="modal-card">
+    <button class="modal-x" id="pwx" aria-label="Close">×</button>
+    <h2 style="font-size:20px;margin-bottom:4px">Unlock unlimited</h2>
+    <p class="mini" id="pwlede" style="margin:0 0 6px">Unlimited résumé tailoring, unlimited jobs, unlimited target companies.</p>
+    <div class="plans" id="pwplans">
+      <button class="plan" data-plan="week" aria-pressed="true">
+        <span class="pname">1 Week</span>
+        <span class="pprice" data-price-week>₹799</span>
+        <span class="pper">7 days, unlimited</span>
+      </button>
+      <button class="plan" data-plan="month" aria-pressed="false">
+        <span class="pname">1 Month</span>
+        <span class="pprice" data-price-month>₹2,499</span>
+        <span class="pper">30 days, unlimited</span>
+        <span class="ptag">Best value</span>
+      </button>
+    </div>
+    <button class="go" id="pwpay">Continue to payment</button>
+    <p class="mini" id="pwmsg" style="margin-top:10px"></p>
+    <p class="mini" style="margin-top:8px;color:var(--faint)">Secure payment via Razorpay. Your pass activates instantly.</p>
   </div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 <script>
 (function(){
   "use strict";
@@ -650,6 +676,7 @@
     function setSession(session){
       ACCOUNT = (session && session.user) ? { email:session.user.email, token:session.access_token } : null;
       renderAccount();
+      if(window.__tlRefresh) window.__tlRefresh();
     }
     if(!authReady){
       // Supabase not configured yet — keep the simple "free · no sign-up" pill, hide account UI.
@@ -673,8 +700,98 @@
     });
     if($("#authsignout")) $("#authsignout").addEventListener("click",function(){ sb.auth.signOut().then(function(){ setSession(null); closeAuth(); }); });
     if(authEmail) authEmail.addEventListener("keydown",function(e){ if(e.key==="Enter"){ e.preventDefault(); $("#authsend").click(); } });
-    if($("#acct-upgrade")) $("#acct-upgrade").addEventListener("click",function(){ closeAuth(); toast("Payments are coming next — the unlimited-jobs unlock is on the way."); });
+    if($("#acct-upgrade")) $("#acct-upgrade").addEventListener("click",function(){ closeAuth(); openPaywall("Unlimited résumé tailoring, unlimited jobs, unlimited target companies."); });
   })();
+
+  /* ---------- entitlement + payments (Razorpay) ---------- */
+  var ENTITLE = null;              // { signedIn, pass:{active,expires_at}, tailorsRemaining }
+  function hasPass(){ return !!(ENTITLE && ENTITLE.pass && ENTITLE.pass.active); }
+  function tailorsLeft(){ return (ENTITLE && typeof ENTITLE.tailorsRemaining==="number") ? ENTITLE.tailorsRemaining : null; }
+  function fmtDate(iso){ try{ return new Date(iso).toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"}); }catch(e){ return ""; } }
+
+  function renderPassState(){
+    var el=$("#acct-pass"); if(!el) return;
+    if(hasPass()){ el.innerHTML = "✓ <b>Unlimited pass active</b> until "+fmtDate(ENTITLE.pass.expires_at)+"."; }
+    else{
+      var left=tailorsLeft();
+      el.innerHTML = (left===null) ? "Free plan." : ("Free plan — <b>"+left+"</b> of 5 résumé tailors left this week.");
+    }
+    var up=$("#acct-upgrade"); if(up) up.hidden = hasPass();
+  }
+  function refreshEntitlement(){
+    if(!ACCOUNT){ ENTITLE=null; renderPassState(); return; }
+    fetch("/api/me",{headers:{Authorization:"Bearer "+ACCOUNT.token}})
+      .then(function(r){ return r.json(); })
+      .then(function(d){ ENTITLE=d||null; renderPassState(); })
+      .catch(function(){ /* leave as-is */ });
+  }
+  window.__tlRefresh = refreshEntitlement;   // called by setSession on login/logout
+
+  // Is a listing segment gated for this viewer? (signed-out or free users are capped at 5)
+  function segmentLocked(){ return authReady && !hasPass(); }
+  var FREE_PER_SEGMENT = 5;
+  // Append a one-time "unlock" call-to-action into a results container.
+  function lockNotice(container, text){
+    if(!container || container.querySelector(".lockcta")) return;
+    var d=document.createElement("div"); d.className="lockcta";
+    d.style.cssText="border:1px dashed var(--line-strong);border-radius:12px;padding:18px;text-align:center;margin-top:4px;background:var(--surface-2)";
+    d.innerHTML='<div class="mini" style="margin:0 0 11px">'+esc(text)+'</div>';
+    var b=document.createElement("button"); b.className="go"; b.style.cssText="width:auto;padding:10px 20px;margin:0 auto";
+    b.textContent = ACCOUNT ? "Unlock unlimited" : "Sign in to unlock";
+    b.addEventListener("click",function(){
+      if(!ACCOUNT){ $("#authmodal").hidden=false; return; }
+      openPaywall("Unlimited jobs, unlimited target companies, and unlimited résumé tailoring.");
+    });
+    d.appendChild(b); container.appendChild(d);
+  }
+
+  // ---- paywall ----
+  var paywall=$("#paywall"), pwPlan="week";
+  function openPaywall(lede){
+    if(!ACCOUNT){ $("#authmodal").hidden=false; return; }   // must be signed in to pay
+    if(lede){ var l=$("#pwlede"); if(l) l.textContent=lede; }
+    if(paywall) paywall.hidden=false;
+    $("#pwmsg").textContent="";
+  }
+  function closePaywall(){ if(paywall) paywall.hidden=true; }
+  if($("#pwx")) $("#pwx").addEventListener("click",closePaywall);
+  if(paywall) paywall.addEventListener("click",function(e){ if(e.target===paywall) closePaywall(); });
+  if($("#pwplans")) $("#pwplans").addEventListener("click",function(e){
+    var b=e.target.closest("button[data-plan]"); if(!b) return;
+    pwPlan=b.dataset.plan;
+    [].forEach.call(this.querySelectorAll("button"),function(x){ x.setAttribute("aria-pressed", x===b?"true":"false"); });
+  });
+  if($("#pwpay")) $("#pwpay").addEventListener("click",function(){
+    if(!ACCOUNT){ $("#authmodal").hidden=false; return; }
+    if(typeof Razorpay==="undefined"){ $("#pwmsg").textContent="Payment library didn't load — refresh and try again."; return; }
+    var btn=$("#pwpay"); btn.disabled=true; $("#pwmsg").textContent="Starting secure checkout…";
+    fetch("/api/checkout",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+ACCOUNT.token},body:JSON.stringify({plan:pwPlan,currency:"INR"})})
+      .then(function(r){ return r.text().then(function(t){ var j=null; try{j=JSON.parse(t);}catch(e){} return {ok:r.ok,j:j}; }); })
+      .then(function(res){
+        if(!res.j || !res.ok || !res.j.orderId){ throw new Error((res.j&&res.j.error)||"Couldn't start checkout"); }
+        var d=res.j;
+        var rzp=new Razorpay({
+          key:d.keyId, order_id:d.orderId, amount:d.amount, currency:d.currency,
+          name:"Tailorline", description:d.label||"Unlimited pass",
+          prefill:{ email:d.email }, theme:{ color:"#0d7d70" },
+          handler:function(resp){
+            $("#pwmsg").textContent="Activating your pass…";
+            fetch("/api/verify",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+ACCOUNT.token},body:JSON.stringify(resp)})
+              .then(function(r){ return r.json(); })
+              .then(function(v){
+                if(v && v.ok){ toast("You're unlocked — enjoy unlimited access!"); refreshEntitlement(); closePaywall(); }
+                else { $("#pwmsg").textContent=(v&&v.error)||"Could not activate — contact support."; }
+              })
+              .catch(function(){ $("#pwmsg").textContent="Could not activate — please contact support."; });
+          },
+          modal:{ ondismiss:function(){ $("#pwmsg").textContent="Payment cancelled."; } }
+        });
+        rzp.open();
+        $("#pwmsg").textContent="";
+      })
+      .catch(function(err){ $("#pwmsg").textContent=(err&&err.message)||"Couldn't start checkout."; })
+      .then(function(){ btn.disabled=false; });
+  });
 
   /* ---------- theme ---------- */
   var root=document.documentElement;
@@ -1018,14 +1135,20 @@
     var fc=$("#filtercard"); fc.style.display=""; $("#filterlog").innerHTML='<span class="li">Tone and structure handled by the AI rewrite.</span>';
     runBtn.disabled=true;
     progStart("Tailoring your resume…");
-    fetch("/api/tailor",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({resume:rt,jd:jd})})
-      .then(function(r){return r.json().then(function(j){return {ok:r.ok,j:j}})})
+    var hdrs={"Content-Type":"application/json"};
+    if(ACCOUNT && ACCOUNT.token) hdrs.Authorization="Bearer "+ACCOUNT.token;
+    fetch("/api/tailor",{method:"POST",headers:hdrs,body:JSON.stringify({resume:rt,jd:jd})})
+      .then(function(r){return r.text().then(function(t){var j=null;try{j=JSON.parse(t);}catch(e){}return {status:r.status,ok:r.ok,j:j};})})
       .then(function(res){
+        // account gates — never fall back to the free formatter on these
+        if(res.status===401){ progDone(); $("#authmodal").hidden=false; toast("Please sign in to tailor your résumé."); return; }
+        if(res.status===402){ progDone(); refreshEntitlement(); openPaywall("You've used your 5 free tailors this week. Unlock unlimited, or come back next week for 5 more."); return; }
         if(!res.ok || !res.j || !res.j.html) throw new Error((res.j&&res.j.error)||"Service busy");
         progDone();
         paper.innerHTML=cleanHTML(res.j.html);
         highlight(STATE.kws);
         finishScore(scoreOf(STATE.kws,(paper.textContent||"").toLowerCase()), 0, true);
+        refreshEntitlement();
       })
       .catch(function(){
         progDone();
@@ -1043,6 +1166,11 @@
     if(rt.length<40 || jd.length<40){ toast("Add a bit more text to both fields."); return; }
     var kws=extractKeywords(jd);
     if(!kws.length){ toast("Couldn't read keywords from that JD."); return; }
+    // tailoring requires sign-in; free users get 5 per week
+    if(authReady){
+      if(!ACCOUNT){ $("#authmodal").hidden=false; toast("Sign in to tailor — it's free (5 résumés per week)."); return; }
+      if(!hasPass() && tailorsLeft()===0){ openPaywall("You've used your 5 free tailors this week. Unlock unlimited, or come back next week for 5 more."); return; }
+    }
     var hayOrig=rt.toLowerCase();
     var rawBefore=scoreOf(kws, hayOrig);
     var dispBefore=calBefore(rawBefore);
@@ -1349,16 +1477,20 @@
           tgtFunc = res.j.targetFunction || "";
           fillAnchors(res.j.employers, tgtAnchor);
         }
-        if(tgtCtrl) tgtCtrl.hidden=false;
+        var locked = segmentLocked();
+        if(tgtCtrl) tgtCtrl.hidden = locked ? true : false;   // free users don't get Load more / change company
         if(!cos.length){
           tgtMsg.textContent = append
             ? "That's all I can find for now — try a different company instead."
             : "Couldn't find good matches this time — try again, or pick a different company below.";
           return;
         }
+        if(locked){ cos = cos.slice(0, Math.max(0, FREE_PER_SEGMENT - tgtShown.length)); }  // cap free users at 5
         cos.forEach(function(c){ tgtShown.push(c.name); tgtList.appendChild(targetCard(c, tgtFunc)); });
         var hiring=tgtList.querySelectorAll(".tag-hot").length;
-        tgtMsg.innerHTML="Showing <b>"+tgtShown.length+"</b> companies like <b>"+esc(tgtAnchor||"your last role")+"</b>, targeting <b>"+esc(tgtFunc||"your function")+"</b>"+(res.j.region?(" in "+esc(res.j.region)):"")+". "+(hiring?("<b>"+hiring+"</b> are hiring that function right now — those show a green badge."):"")+" <span style=\"color:var(--faint)\">Load more, or pick another company below.</span>";
+        var tail = locked ? "" : " <span style=\"color:var(--faint)\">Load more, or pick another company below.</span>";
+        tgtMsg.innerHTML="Showing <b>"+tgtShown.length+"</b> companies like <b>"+esc(tgtAnchor||"your last role")+"</b>, targeting <b>"+esc(tgtFunc||"your function")+"</b>"+(res.j.region?(" in "+esc(res.j.region)):"")+". "+(hiring?("<b>"+hiring+"</b> are hiring that function right now — those show a green badge."):"")+tail;
+        if(locked){ lockNotice(tgtList, "You're seeing 5 peers. Unlock unlimited companies and the 'try another company' tool with a pass."); }
       })
       .catch(function(err){ tgtMsg.textContent="Couldn't load suggestions right now — "+((err&&err.message)||"try again shortly")+"."; })
       .then(function(){ setBusy(false); });
@@ -1431,8 +1563,10 @@
       if(jobPage===1 && !jobs.length){ msg.textContent="No matches yet — try a broader title like “engineer”, “marketing”, “product”, or “data”."; return; }
       var total = (res.j.total!=null) ? res.j.total : jobs.length;
       msg.textContent = total+' matching job'+(total===1?"":"s")+' for "'+jobQ+'"'+(jobWhere?(" in "+jobWhere):"")+" — direct from employers";
+      if(segmentLocked()){ jobs=jobs.slice(0, FREE_PER_SEGMENT); }    // free users see 5
       jobs.forEach(function(j){ list.appendChild(jobCard(j)); });
-      more.hidden = jobs.length<10;
+      if(segmentLocked()){ more.hidden=true; lockNotice(list, "You're seeing 5 of many. Unlock unlimited jobs with a pass."); }
+      else { more.hidden = jobs.length<10; }
     }).catch(function(err){
       msg.textContent = "Couldn't load jobs right now — "+((err&&err.message)||"try again shortly")+".";
     });
