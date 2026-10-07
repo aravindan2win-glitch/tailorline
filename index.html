@@ -828,8 +828,9 @@
       if(!t){ pushPara(); pushList(); continue; }
       if(isHeading(t)){ pushPara(); pushList(); cur={type:"section",title:t.replace(/:$/,"").replace(/\s+/g," "),items:[]}; blocks.push(cur); continue; }
       if(/^[-•*·▪‣◦o]\s+/.test(t)){ pushPara(); list.push(t.replace(/^[-•*·▪‣◦o]\s+/,"")); continue; }
-      pushList();
-      if(isRole(t)){ pushPara(); target().push({type:"role",text:t}); continue; }
+      if(isRole(t)){ pushPara(); pushList(); target().push({type:"role",text:t}); continue; }
+      // a plain line while a bullet list is open = a wrapped continuation of the last bullet
+      if(list.length){ list[list.length-1] += " " + t; continue; }
       para.push(t);
     }
     pushPara(); pushList();
