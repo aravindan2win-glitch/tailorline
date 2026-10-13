@@ -278,6 +278,14 @@
   .plan .pprice{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:22px;letter-spacing:-.02em;margin-top:3px}
   .plan .pper{font-size:11px;color:var(--muted)}
   .plan .ptag{display:inline-block;margin-top:5px;font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--accent-ink)}
+  .gbtn{width:100%;display:flex;align-items:center;justify-content:center;gap:10px;background:var(--surface);color:var(--ink);border:1px solid var(--line-strong);border-radius:11px;padding:12px 16px;font-weight:600;font-size:14.5px;cursor:pointer}
+  .gbtn:hover{background:var(--surface-2)}
+  .gbtn svg{flex:none}
+  .auth-or{display:flex;align-items:center;gap:12px;margin:14px 0;color:var(--faint);font-size:12px}
+  .auth-or::before,.auth-or::after{content:"";height:1px;background:var(--line);flex:1}
+  .auth-links{display:flex;justify-content:space-between;gap:10px;margin-top:10px;flex-wrap:wrap}
+  .linkbtn{background:none;border:0;color:var(--accent-ink);font:inherit;font-size:12.5px;cursor:pointer;padding:0;text-decoration:underline}
+  .linkbtn:hover{color:var(--accent)}
 
   .foot{max-width:var(--maxw);margin:0 auto;padding:0 22px}
   .foot .in{border-top:1px solid var(--line);padding:22px 0 0;color:var(--faint);font-size:12px;line-height:1.6;max-width:80ch}
@@ -594,11 +602,22 @@
   <div class="modal-card">
     <button class="modal-x" id="authx" aria-label="Close">×</button>
     <div id="auth-signedout">
-      <h2 style="font-size:20px;margin-bottom:6px">Sign in to Tailorline</h2>
-      <p class="mini" style="margin:0 0 14px">Enter your email and we'll send you a one-tap magic link — no password to remember.</p>
+      <h2 style="font-size:20px;margin-bottom:4px" id="auth-title">Sign in to Tailorline</h2>
+      <p class="mini" id="auth-sub" style="margin:0 0 14px">Sign in or create a free account — 5 résumé tailors every week.</p>
+      <button class="gbtn" id="authgoogle" type="button">
+        <svg viewBox="0 0 18 18" width="18" height="18" aria-hidden="true"><path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.71-1.57 2.68-3.89 2.68-6.62z"/><path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.81.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.33A9 9 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.97 10.72a5.4 5.4 0 0 1 0-3.44V4.95H.96a9 9 0 0 0 0 8.1l3.01-2.33z"/><path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58A9 9 0 0 0 .96 4.95l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58z"/></svg>
+        Continue with Google
+      </button>
+      <div class="auth-or"><span>or</span></div>
       <input type="email" id="authemail" placeholder="you@email.com" autocomplete="email">
-      <button class="go" id="authsend" style="margin-top:10px">Email me a magic link</button>
+      <input type="password" id="authpass" placeholder="Password" autocomplete="current-password" style="margin-top:8px">
+      <button class="go" id="authpwbtn" style="margin-top:10px">Sign in</button>
       <p class="mini" id="authmsg" style="margin-top:10px"></p>
+      <div class="auth-links">
+        <button type="button" class="linkbtn" id="authtoggle">New here? Create an account</button>
+        <button type="button" class="linkbtn" id="authforgot">Forgot password?</button>
+      </div>
+      <button type="button" class="linkbtn" id="authmagic" style="margin-top:6px">Email me a one-time sign-in link instead</button>
     </div>
     <div id="auth-signedin" hidden>
       <h2 style="font-size:20px;margin-bottom:6px">Your account</h2>
@@ -689,17 +708,73 @@
     sb.auth.onAuthStateChange(function(_e,session){ setSession(session); if(session) closeAuth(); });
     if($("#authx")) $("#authx").addEventListener("click",closeAuth);
     if(authModal) authModal.addEventListener("click",function(e){ if(e.target===authModal) closeAuth(); });
-    if($("#authsend")) $("#authsend").addEventListener("click",function(){
-      var email=(authEmail.value||"").trim();
-      if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ authMsg.textContent="Please enter a valid email."; return; }
-      $("#authsend").disabled=true; authMsg.textContent="Sending…";
-      sb.auth.signInWithOtp({ email:email, options:{ emailRedirectTo: window.location.href.split("#")[0] } })
-        .then(function(res){ authMsg.textContent = (res&&res.error) ? (res.error.message||"Couldn't send — try again.") : "✓ Check your inbox and tap the link to finish signing in."; })
-        .catch(function(){ authMsg.textContent="Couldn't send — try again."; })
-        .then(function(){ $("#authsend").disabled=false; });
+    var authPass=$("#authpass"), authMode="signin";   // or "signup"
+    var redirectTo = window.location.href.split("#")[0].split("?")[0];
+    function validEmail(e){ return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e); }
+
+    // Continue with Google
+    if($("#authgoogle")) $("#authgoogle").addEventListener("click",function(){
+      authMsg.textContent="Opening Google…";
+      sb.auth.signInWithOAuth({ provider:"google", options:{ redirectTo:redirectTo } })
+        .then(function(res){ if(res&&res.error) authMsg.textContent=res.error.message||"Couldn't open Google sign-in."; })
+        .catch(function(){ authMsg.textContent="Couldn't open Google sign-in."; });
     });
+
+    // Switch between Sign in / Create account
+    function setMode(m){
+      authMode=m;
+      var isUp=(m==="signup");
+      $("#auth-title").textContent = isUp ? "Create your Tailorline account" : "Sign in to Tailorline";
+      $("#authpwbtn").textContent = isUp ? "Create account" : "Sign in";
+      $("#authtoggle").textContent = isUp ? "Already have an account? Sign in" : "New here? Create an account";
+      if(authPass) authPass.setAttribute("autocomplete", isUp ? "new-password" : "current-password");
+      authMsg.textContent="";
+    }
+    if($("#authtoggle")) $("#authtoggle").addEventListener("click",function(){ setMode(authMode==="signin"?"signup":"signin"); });
+
+    // Email + password sign in / sign up
+    function doPassword(){
+      var email=(authEmail.value||"").trim(), pass=(authPass.value||"");
+      if(!validEmail(email)){ authMsg.textContent="Please enter a valid email."; return; }
+      if(pass.length<6){ authMsg.textContent="Password must be at least 6 characters."; return; }
+      $("#authpwbtn").disabled=true; authMsg.textContent = authMode==="signup" ? "Creating your account…" : "Signing in…";
+      var p = authMode==="signup"
+        ? sb.auth.signUp({ email:email, password:pass, options:{ emailRedirectTo:redirectTo } })
+        : sb.auth.signInWithPassword({ email:email, password:pass });
+      p.then(function(res){
+        if(res && res.error){ authMsg.textContent = res.error.message || "Something went wrong — try again."; return; }
+        if(authMode==="signup" && res.data && res.data.user && !res.data.session){
+          authMsg.textContent = "✓ Account created — check your email to confirm, then sign in.";
+        }
+        // on success with a session, onAuthStateChange closes the modal
+      })
+      .catch(function(){ authMsg.textContent="Something went wrong — try again."; })
+      .then(function(){ $("#authpwbtn").disabled=false; });
+    }
+    if($("#authpwbtn")) $("#authpwbtn").addEventListener("click",doPassword);
+    if(authPass) authPass.addEventListener("keydown",function(e){ if(e.key==="Enter"){ e.preventDefault(); doPassword(); } });
+    if(authEmail) authEmail.addEventListener("keydown",function(e){ if(e.key==="Enter"){ e.preventDefault(); if(authPass) authPass.focus(); } });
+
+    // Forgot password
+    if($("#authforgot")) $("#authforgot").addEventListener("click",function(){
+      var email=(authEmail.value||"").trim();
+      if(!validEmail(email)){ authMsg.textContent="Enter your email above first, then tap 'Forgot password?'."; return; }
+      sb.auth.resetPasswordForEmail(email, { redirectTo:redirectTo })
+        .then(function(res){ authMsg.textContent = (res&&res.error) ? (res.error.message||"Couldn't send reset email.") : "✓ Password reset link sent — check your inbox."; })
+        .catch(function(){ authMsg.textContent="Couldn't send reset email."; });
+    });
+
+    // Magic link (secondary)
+    if($("#authmagic")) $("#authmagic").addEventListener("click",function(){
+      var email=(authEmail.value||"").trim();
+      if(!validEmail(email)){ authMsg.textContent="Enter your email above first, then tap the link option."; return; }
+      authMsg.textContent="Sending…";
+      sb.auth.signInWithOtp({ email:email, options:{ emailRedirectTo:redirectTo } })
+        .then(function(res){ authMsg.textContent = (res&&res.error) ? (res.error.message||"Couldn't send — try again.") : "✓ Check your inbox and tap the link to finish signing in."; })
+        .catch(function(){ authMsg.textContent="Couldn't send — try again."; });
+    });
+
     if($("#authsignout")) $("#authsignout").addEventListener("click",function(){ sb.auth.signOut().then(function(){ setSession(null); closeAuth(); }); });
-    if(authEmail) authEmail.addEventListener("keydown",function(e){ if(e.key==="Enter"){ e.preventDefault(); $("#authsend").click(); } });
     if($("#acct-upgrade")) $("#acct-upgrade").addEventListener("click",function(){ closeAuth(); openPaywall("Unlimited résumé tailoring, unlimited jobs, unlimited target companies."); });
   })();
 
