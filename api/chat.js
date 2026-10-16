@@ -24,6 +24,27 @@ function limited(ip){
   return a.length > max;
 }
 
+function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
+// Call Gemini, retrying twice through transient "high demand" spikes (429 / 5xx).
+async function callGemini(url, payload){
+  var attempts = 3, delays = [1200, 2500];
+  var last = { ok:false, data:{ error:{ message:"AI error" } } };
+  for(var i=0;i<attempts;i++){
+    try{
+      var r = await fetch(url, { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(payload) });
+      var data = await r.json();
+      if(r.ok) return { ok:true, data:data };
+      last = { ok:false, data:data, status:r.status };
+      if(!(r.status===429 || r.status>=500) || i===attempts-1) return last;
+    }catch(e){
+      last = { ok:false, data:{ error:{ message:"Network error reaching the AI" } } };
+      if(i===attempts-1) return last;
+    }
+    await sleep(delays[i] || 2500);
+  }
+  return last;
+}
+
 module.exports = async function handler(req, res){
   if(req.method !== "POST"){ res.status(405).json({ error: "Method not allowed" }); return; }
   var key = process.env.GEMINI_API_KEY;
@@ -50,13 +71,19 @@ module.exports = async function handler(req, res){
     var url = "https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(model) + ":generateContent?key=" + encodeURIComponent(key);
     var userText = "CURRENT RESUME (HTML):\n" + resume + (jd ? ("\n\nTARGET JOB DESCRIPTION:\n" + jd) : "") + "\n\nUSER MESSAGE:\n" + msg;
 
-    var r = await fetch(url, { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify({
+    var out = await callGemini(url, {
       systemInstruction:{ parts:[{ text:SYS }] },
       contents:[{ role:"user", parts:[{ text:userText }] }],
       generationConfig:{ temperature:0.5, maxOutputTokens:4096 }
-    })});
-    var data = await r.json();
-    if(!r.ok){ res.status(502).json({ error:(data && data.error && data.error.message) || "AI error" }); return; }
+    });
+    var data = out.data;
+    if(!out.ok){
+      var em = (data && data.error && data.error.message) || "AI error";
+      if(/high demand|overload|try again|unavailable|exhausted|quota|rate/i.test(em)){
+        em = "The assistant is busy right now — give it a few seconds and send again.";
+      }
+      res.status(502).json({ error: em }); return;
+    }
     var txt = (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts &&
       data.candidates[0].content.parts.map(function(p){ return p.text || ""; }).join("")) || "";
     txt = txt.replace(/```json?/gi, "").replace(/```/g, "").trim();
