@@ -1300,7 +1300,7 @@
   }
 
   function run(){
-    var rt=resumeEl.value.trim(), jd=jdEl.value.trim();
+    var rt=deLigature(resumeEl.value.trim()), jd=deLigature(jdEl.value.trim());
     if(rt.length<40 || jd.length<40){ toast("Add a bit more text to both fields."); return; }
     var kws=extractKeywords(jd);
     if(!kws.length){ toast("Couldn't read keywords from that JD."); return; }
@@ -1498,8 +1498,11 @@
       var tag=el.tagName, cls=(typeof el.className==="string"?el.className:""), t=el.textContent||"";
       // a role header is ALWAYS short — long paragraphs must never be bolded
       var looksRole = t.length<=95 && (/(19|20)\d{2}/.test(t) || /\s\|\s/.test(t));
-      if(tag==="H1"){ text(t, 19, "bold", nameColor, tpl==="classic"?"center":"left", 1.2); }
-      else if(cls.indexOf("contact")>=0){ text(t, 9.2, "normal", gray, tpl==="classic"?"center":"left", 3); }
+      if(tag==="H1"){
+        text(t, 25, "bold", nameColor, tpl==="classic"?"center":"left", tpl==="classic"?1.8:2.6);
+        if(tpl==="modern"){ ensure(2); doc.setDrawColor(teal[0],teal[1],teal[2]); doc.setLineWidth(0.9); doc.line(ML, y, ML+Math.min(W,54), y); y+=2.8; }
+      }
+      else if(cls.indexOf("contact")>=0){ text(t, 9.6, "normal", gray, tpl==="classic"?"center":"left", 3.4); }
       else if(tag==="HR"){ if(tpl==="classic"){ rule(); } else { y+=1.5; } }
       else if(tag==="H2"){
         y+=2.5; ensure(6);
