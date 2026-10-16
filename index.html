@@ -1563,6 +1563,7 @@
       .then(function(res){
         thinking.remove();
         if(res.status===401){ $("#authmodal").hidden=false; addMsg("Please sign in to use the assistant.","sys"); return; }
+        if(res.status===402){ addMsg((res.j&&res.j.error)||"You've used your free assistant messages this week.","sys"); openPaywall("Unlock the résumé assistant — unlimited questions and edits, plus unlimited tailoring and jobs."); return; }
         if(!res.j){ addMsg("The assistant is busy — give it a few seconds and try again.","sys"); return; }
         if(!res.ok){ addMsg(res.j.error||"Something went wrong — try again.","sys"); return; }
         if(res.j.updatedResumeHtml && res.j.updatedResumeHtml.length>20){
