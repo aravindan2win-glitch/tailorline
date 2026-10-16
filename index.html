@@ -355,12 +355,26 @@
   .tplgrid > button[aria-pressed=true] .tpl-cap b{color:var(--accent-ink)}
 
   /* ---- build progress bar ---- */
-  .buildbar{padding:15px 18px;margin-bottom:18px}
+  .buildbar{padding:22px 22px;margin-bottom:18px;border:1px solid var(--accent-soft);background:linear-gradient(180deg,color-mix(in srgb,var(--accent-soft) 55%,var(--surface)),var(--surface))}
   #buildbar[hidden]{display:none}
-  .bb-row{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--muted);margin-bottom:7px;font-weight:600}
-  .bb-pct{font-family:"IBM Plex Mono";color:var(--accent-ink)}
-  .bb-track{height:7px;border-radius:99px;background:var(--surface-2);border:1px solid var(--line);overflow:hidden}
+  .bb-head{display:flex;align-items:center;gap:12px;font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:19px;letter-spacing:-.01em;color:var(--ink);margin-bottom:6px}
+  .bb-spin{width:20px;height:20px;flex:none;border-radius:50%;border:2.5px solid var(--accent-soft);border-top-color:var(--accent);animation:bbspin .8s linear infinite}
+  @keyframes bbspin{to{transform:rotate(360deg)}}
+  .bb-sub{font-size:12.5px;color:var(--muted)}
+  .bb-row{display:flex;justify-content:space-between;align-items:center;font-size:12.5px;color:var(--muted);margin:2px 0 9px;font-weight:600}
+  .bb-pct{font-family:"IBM Plex Mono";color:var(--accent-ink);font-size:14px;font-weight:600}
+  .bb-track{height:10px;border-radius:99px;background:var(--surface-2);border:1px solid var(--line);overflow:hidden}
   .bb-fill{height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--accent-ink));border-radius:99px;transition:width .3s ease}
+
+  /* ---- résumé assistant (chat) ---- */
+  .chatlog{display:flex;flex-direction:column;gap:10px;max-height:320px;overflow:auto;margin-bottom:12px}
+  .chatmsg{font-size:13.5px;line-height:1.55;padding:10px 13px;border-radius:13px;max-width:90%;white-space:pre-wrap;word-wrap:break-word}
+  .chatmsg.bot{background:var(--surface-2);border:1px solid var(--line);color:var(--ink);align-self:flex-start;border-bottom-left-radius:4px}
+  .chatmsg.me{background:var(--accent-soft);border:1px solid color-mix(in srgb,var(--accent) 30%,var(--line));color:var(--accent-ink);align-self:flex-end;border-bottom-right-radius:4px}
+  .chatmsg.sys{align-self:center;font-size:12px;color:var(--faint);background:none;border:0;padding:3px 0;max-width:100%}
+  .chatinput{display:flex;gap:9px;align-items:flex-end}
+  .chatinput textarea{flex:1;min-height:0;resize:vertical}
+  .chatinput .go{width:auto;padding:11px 20px;margin:0}
 
   @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 
@@ -484,7 +498,8 @@
 
       <div id="results" hidden>
         <div id="buildbar" class="buildbar card" hidden>
-          <div class="bb-row"><span id="bbtext">Building your tailored resume…</span><span class="bb-pct" id="bbpct">0%</span></div>
+          <div class="bb-head"><span class="bb-spin"></span><span id="bbtext">Tailoring your résumé…</span></div>
+          <div class="bb-row"><span class="bb-sub">Matching keywords and polishing the wording</span><span class="bb-pct" id="bbpct">0%</span></div>
           <div class="bb-track"><div class="bb-fill" id="bbfill"></div></div>
         </div>
         <div class="card" id="histcard">
@@ -551,6 +566,19 @@
             <div class="paper" id="paper" contenteditable="true" spellcheck="false"></div>
           </div>
         </div>
+
+        <div class="card" id="chatcard" style="margin-top:18px">
+          <div class="card-h"><span class="step">✦</span><h2>Résumé assistant</h2><span class="sub">ask or edit</span></div>
+          <div class="card-b">
+            <div class="chatlog" id="chatlog">
+              <div class="chatmsg bot">Ask me anything about your résumé, or tell me to change it. Try: “add SQL and Tableau to my skills”, “make the summary shorter”, or paste an application question like “Describe your leadership experience” and I’ll answer it from your résumé.</div>
+            </div>
+            <div class="chatinput">
+              <textarea id="chatbox" rows="2" placeholder="Ask a question or request a change…"></textarea>
+              <button class="go" id="chatsend">Send</button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -591,8 +619,7 @@
 </div>
 
 <div class="foot"><div class="in">
-  <b>How the score works.</b> Tailorline pulls the most important terms from the job description, checks how many already appear in your resume, and weights them by how often the posting mentions them, then re-scores after the rewrite. Neither engine invents jobs, dates, or metrics — you stay in control of every word.<br><br>
-  <b>How the rewrite works.</b> Your resume and the job description are sent to a secure server that runs the AI rewrite and returns cleanly formatted, ATS-readable text — your resume is not stored. If the service is momentarily busy, an instant in-browser formatter takes over so you always get a result. Job listings come from public job feeds; "Apply" takes you directly to the employer's own page.
+  Your résumé is processed securely to generate your results and is not stored. You stay in control of every word.
 </div></div>
 
 <div class="toast" id="toast"></div>
@@ -1088,8 +1115,9 @@
   /* ---------- build progress ---------- */
   var progT;
   function progStart(label){
-    var bb=$("#buildbar"); $("#bbtext").textContent=label||"Building your tailored resume…";
+    var bb=$("#buildbar"); $("#bbtext").textContent=label||"Tailoring your résumé…";
     bb.hidden=false; var p=8; $("#bbfill").style.width="8%"; $("#bbpct").textContent="8%";
+    try{ bb.scrollIntoView({behavior:"smooth",block:"center"}); }catch(e){}
     clearInterval(progT);
     progT=setInterval(function(){ p+=Math.max(0.4,(92-p)*0.05); if(p>92)p=92; $("#bbfill").style.width=p+"%"; $("#bbpct").textContent=Math.round(p)+"%"; },160);
   }
@@ -1145,12 +1173,29 @@
   }
   function finishScore(raw, added, ai){
     var da=calAfter(raw, STATE.dispBefore); STATE.dispAfter=da;
+    STATE.anchorAfter=da; STATE.rawAtAnchor=raw;   // the earned score; live edits move gently around it
     $("#after").textContent=da+"%";
     var gain=da-STATE.dispBefore;
     $("#gain").textContent=gain>0?("▲ "+gain+" pts"):"";
     setDial(da);
     if(STATE.entry){ STATE.entry.after=da; renderHistory(); }
     $("#verdict").innerHTML=verdictHtml(da, added, ai);
+  }
+  // Live edits in the preview adjust the score only slightly (max ~5 pts) around the
+  // earned score, measured against the whole résumé — so one deletion never tanks it.
+  function liveRescore(){
+    if(!STATE) return;
+    var raw=scoreOf(STATE.kws,(paper.textContent||"").toLowerCase());
+    var base=(typeof STATE.anchorAfter==="number")?STATE.anchorAfter:(STATE.dispAfter||0);
+    var rawBase=(typeof STATE.rawAtAnchor==="number")?STATE.rawAtAnchor:raw;
+    var da=Math.round(base+(raw-rawBase)*0.35);
+    da=Math.max(base-5, Math.min(base+5, da));
+    da=Math.max(0, Math.min(97, da));
+    STATE.dispAfter=da;
+    $("#after").textContent=da+"%";
+    var gain=da-STATE.dispBefore; $("#gain").textContent=gain>0?("▲ "+gain+" pts"):"";
+    setDial(da);
+    if(STATE.entry){ STATE.entry.after=da; renderHistory(); }
   }
   function showFilterLog(filtered){
     var fl=$("#filterlog"), fc=$("#filtercard"); fc.style.display=""; fl.innerHTML="";
@@ -1165,10 +1210,27 @@
     } else { fl.innerHTML='<span class="li">Clean already — no robotic phrasing or em-dashes found.</span>'; }
   }
 
+  // Re-join any line a bullet or sentence wrongly spilled onto (continuation that
+  // starts lowercase / with a connector word gets merged back into the previous bullet).
+  function mergeStray(root){
+    var kids=Array.prototype.slice.call(root.children);
+    for(var i=1;i<kids.length;i++){
+      var el=kids[i], prev=kids[i-1];
+      if(el.tagName!=="P") continue;
+      var t=(el.textContent||"").trim();
+      if(!t){ el.remove(); continue; }
+      var isCont = /^[a-z,;:)–—\-]/.test(t) || /^(and|or|to|the|a|an|with|for|of|in|on|at|that|which|using|through)\b/i.test(t);
+      if(!isCont) continue;
+      if(prev.tagName==="UL" && prev.lastElementChild){ prev.lastElementChild.innerHTML += " " + el.innerHTML; el.remove(); }
+      else if(prev.tagName==="P"){ prev.innerHTML += " " + el.innerHTML; el.remove(); }
+    }
+  }
+
   function recompute(){
     if(!STATE || STATE.ai) return;
     var picked=STATE.missing.filter(function(m){return m.on});
     paper.innerHTML=renderResume(STATE.model, picked);
+    mergeStray(paper);
     highlight(STATE.kws);
     var after=scoreOf(STATE.kws,(paper.textContent||"").toLowerCase());
     finishScore(after, picked.length, false);
@@ -1221,6 +1283,7 @@
         if(!res.ok || !res.j || !res.j.html) throw new Error((res.j&&res.j.error)||"Service busy");
         progDone();
         paper.innerHTML=cleanHTML(res.j.html);
+        mergeStray(paper);
         highlight(STATE.kws);
         finishScore(scoreOf(STATE.kws,(paper.textContent||"").toLowerCase()), 0, true);
         refreshEntitlement();
@@ -1230,7 +1293,7 @@
         toast("Busy right now — showing the instant formatter");
         STATE.ai=false; var filtered=antiAi(rt); STATE.model=parseResume(filtered.text); showFilterLog(filtered);
         var picked=STATE.missing.filter(function(m){return m.on});
-        paper.innerHTML=renderResume(STATE.model,picked); highlight(STATE.kws);
+        paper.innerHTML=renderResume(STATE.model,picked); mergeStray(paper); highlight(STATE.kws);
         finishScore(scoreOf(STATE.kws,(paper.textContent||"").toLowerCase()), picked.length, false);
       })
       .then(function(){ runBtn.disabled=false; checkReady(); });
@@ -1316,6 +1379,27 @@
   ["dragleave","drop"].forEach(function(ev){ drop.addEventListener(ev,function(e){e.preventDefault();drop.classList.remove("hot")}); });
   drop.addEventListener("drop",function(e){ var f=e.dataTransfer.files[0]; if(f) readPdf(f); });
   fileInput.addEventListener("change",function(){ if(fileInput.files[0]) readPdf(fileInput.files[0]); });
+  // Repair common PDF ligature artifacts: glyphs returned as Unicode ligatures,
+  // and the frequent "ti/tt/ft" drop where the ligature glyph has no text mapping
+  // (e.g. Markeng->Marketing, Relaons->Relations). The AI pass fixes anything left.
+  function deLigature(s){
+    s=String(s||"")
+      .replace(/ﬀ/g,"ff").replace(/ﬁ/g,"fi").replace(/ﬂ/g,"fl")
+      .replace(/ﬃ/g,"ffi").replace(/ﬄ/g,"ffl").replace(/ﬅ/g,"ft").replace(/ﬆ/g,"st");
+    try{ s=s.normalize("NFKC"); }catch(e){}
+    // targeted fixes for the most common dropped-"ti" résumé words
+    var FIX={ "markeng":"marketing","relaons":"relations","promoonal":"promotional","tradional":"traditional",
+      "operaons":"operations","opmizaon":"optimization","opmize":"optimize","informaon":"information",
+      "communicaon":"communication","applicaon":"application","presentaon":"presentation","educaon":"education",
+      "cerficaon":"certification","organizaon":"organization","naonal":"national","internaonal":"international",
+      "soluons":"solutions","acquision":"acquisition","retenon":"retention","automaon":"automation",
+      "generaon":"generation","negoaon":"negotiation","collaboraon":"collaboration","parcipaon":"participation" };
+    return s.replace(/[A-Za-z]+/g,function(w){
+      var lw=w.toLowerCase(), f=FIX[lw];
+      if(!f) return w;
+      return /^[A-Z]/.test(w) ? f.charAt(0).toUpperCase()+f.slice(1) : f;
+    });
+  }
   function readPdf(file){
     if(file.type!=="application/pdf"){ dropStatus.textContent="Please choose a .pdf file."; return; }
     if(!window.pdfjsLib){ dropStatus.textContent="PDF reader unavailable — paste the text instead."; return; }
@@ -1338,7 +1422,7 @@
           });
           return out;
         }).join("\n");
-        resumeEl.value=text.replace(/\n{3,}/g,"\n\n").trim();
+        resumeEl.value=deLigature(text).replace(/\n{3,}/g,"\n\n").trim();
         dropStatus.textContent="✓ Loaded "+file.name+" — edit above if needed";
         checkReady();
       }).catch(function(){ dropStatus.textContent="Couldn't read that PDF — paste the text instead."; });
@@ -1452,11 +1536,46 @@
   paper.addEventListener("input",function(){
     if(!STATE) return;
     clearTimeout(rescoreT);
-    rescoreT=setTimeout(function(){
-      var raw=scoreOf(STATE.kws,(paper.textContent||"").toLowerCase());
-      finishScore(raw, STATE.ai?0:STATE.missing.filter(function(m){return m.on}).length, STATE.ai);
-    },500);
+    rescoreT=setTimeout(function(){ liveRescore(); },500);
   });
+
+  /* ---------- résumé assistant (chat) ---------- */
+  var chatLog=$("#chatlog"), chatBox=$("#chatbox"), chatSend=$("#chatsend");
+  function addMsg(text, cls){
+    var d=document.createElement("div"); d.className="chatmsg "+(cls||"bot"); d.textContent=text;
+    chatLog.appendChild(d); chatLog.scrollTop=chatLog.scrollHeight; return d;
+  }
+  function resumeForChat(){ return ((paper.textContent||"").trim().length>30) ? paper.innerHTML : (resumeEl.value||""); }
+  function sendChat(){
+    var msg=(chatBox.value||"").trim(); if(!msg) return;
+    if(authReady && !ACCOUNT){ $("#authmodal").hidden=false; toast("Sign in to use the assistant."); return; }
+    if(((paper.textContent||"").trim().length<30) && (resumeEl.value||"").trim().length<30){ toast("Tailor or add your résumé first."); return; }
+    addMsg(msg,"me"); chatBox.value="";
+    var thinking=addMsg("Thinking…","sys");
+    chatSend.disabled=true;
+    var hdrs={"Content-Type":"application/json"}; if(ACCOUNT&&ACCOUNT.token) hdrs.Authorization="Bearer "+ACCOUNT.token;
+    var payload={ resume:resumeForChat(), message:msg }; if(jdEl.value.trim()) payload.jd=jdEl.value.trim();
+    fetch("/api/chat",{method:"POST",headers:hdrs,body:JSON.stringify(payload)})
+      .then(function(r){ return r.text().then(function(t){ var j=null; try{j=JSON.parse(t);}catch(e){} return {status:r.status,ok:r.ok,j:j}; }); })
+      .then(function(res){
+        thinking.remove();
+        if(res.status===401){ $("#authmodal").hidden=false; addMsg("Please sign in to use the assistant.","sys"); return; }
+        if(!res.j){ addMsg("The assistant is busy — give it a few seconds and try again.","sys"); return; }
+        if(!res.ok){ addMsg(res.j.error||"Something went wrong — try again.","sys"); return; }
+        if(res.j.updatedResumeHtml && res.j.updatedResumeHtml.length>20){
+          paper.innerHTML=cleanHTML(res.j.updatedResumeHtml); mergeStray(paper);
+          if(STATE){ highlight(STATE.kws); finishScore(scoreOf(STATE.kws,(paper.textContent||"").toLowerCase()), 0, true); }
+          addMsg((res.j.reply||"Done — I updated your résumé.")+"\n\n✦ Your résumé above has been updated.","bot");
+          try{ $("#paperwrap").scrollIntoView({behavior:"smooth",block:"center"}); }catch(e){}
+        } else {
+          addMsg(res.j.reply||"(no answer)","bot");
+        }
+      })
+      .catch(function(){ thinking.remove(); addMsg("Network error — please try again.","sys"); })
+      .then(function(){ chatSend.disabled=false; });
+  }
+  if(chatSend) chatSend.addEventListener("click",sendChat);
+  if(chatBox) chatBox.addEventListener("keydown",function(e){ if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); sendChat(); } });
 
   var toastEl=$("#toast"), toastT;
   function toast(m){ toastEl.textContent=m; toastEl.classList.add("show"); clearTimeout(toastT); toastT=setTimeout(function(){toastEl.classList.remove("show")},2400); }
