@@ -53,6 +53,20 @@ module.exports = async function handler(req, res){
   var user = await lib.verifyUser(req);
   if(!user){ res.status(401).json({ error: "Please sign in to use the assistant." }); return; }
 
+  // Pass holders: unlimited. Free users: a few messages per week, then upgrade.
+  var passActive = false;
+  try{
+    var pass = await lib.getPass(user.email);
+    passActive = !!(pass && pass.active);
+    if(!passActive){
+      var cu = await lib.getUsage(user.email, "chat");
+      if(cu.count >= lib.CHAT_FREE_PER_WEEK){
+        res.status(402).json({ error: "You've used your " + lib.CHAT_FREE_PER_WEEK + " free assistant messages this week — unlock unlimited with a pass." });
+        return;
+      }
+    }
+  }catch(e){ /* fail open on a lookup hiccup */ }
+
   try{
     var body = req.body;
     if(typeof body === "string"){ try{ body = JSON.parse(body || "{}"); }catch(e){ body = {}; } }
@@ -95,6 +109,7 @@ module.exports = async function handler(req, res){
       .replace(/<script[\s\S]*?<\/script>/gi, "").replace(/<style[\s\S]*?<\/style>/gi, "")
       .replace(/ on\w+\s*=\s*"[^"]*"/gi, "").trim();
 
+    if(!passActive){ try{ await lib.incUsage(user.email, "chat"); }catch(e){} }  // count a free message
     res.status(200).json({ reply: String(parsed.reply || "").slice(0, 4000), updatedResumeHtml: upd });
   }catch(e){
     res.status(500).json({ error: "Unexpected server error" });
