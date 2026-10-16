@@ -40,6 +40,28 @@ var SYS = [
 
 // Best-effort per-IP rate limit. Serverless instances are short-lived, so this
 // is a light guard, not airtight — set a hard spend cap in Google AI/Cloud too.
+function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
+// One short retry through a transient "high demand" spike, so we use the AI
+// (which also fixes typos) more often instead of the client's offline fallback.
+async function callGemini(url, payload){
+  var attempts = 2, delays = [1500];
+  var last = { ok:false, data:{ error:{ message:"AI service error" } } };
+  for(var i=0;i<attempts;i++){
+    try{
+      var r = await fetch(url, { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(payload) });
+      var data = await r.json();
+      if(r.ok) return { ok:true, data:data };
+      last = { ok:false, data:data, status:r.status };
+      if(!(r.status===429 || r.status>=500) || i===attempts-1) return last;
+    }catch(e){
+      last = { ok:false, data:{ error:{ message:"Network error reaching the AI" } } };
+      if(i===attempts-1) return last;
+    }
+    await sleep(delays[i] || 1500);
+  }
+  return last;
+}
+
 var HITS = {};
 function limited(ip){
   var now = Date.now(), win = 60 * 60 * 1000, max = 20; // ~20 / hour / IP
@@ -92,17 +114,13 @@ module.exports = async function handler(req, res){
       encodeURIComponent(model) + ":generateContent?key=" + encodeURIComponent(key);
     var user_msg = "--- TARGET JOB DESCRIPTION ---\n" + jd + "\n\n--- BASE RESUME TEXT ---\n" + resume;
 
-    var r = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: SYS }] },
-        contents: [{ role: "user", parts: [{ text: user_msg }] }],
-        generationConfig: { temperature: 0.4, maxOutputTokens: 8192 }
-      })
+    var out = await callGemini(url, {
+      systemInstruction: { parts: [{ text: SYS }] },
+      contents: [{ role: "user", parts: [{ text: user_msg }] }],
+      generationConfig: { temperature: 0.4, maxOutputTokens: 8192 }
     });
-    var data = await r.json();
-    if(!r.ok){
+    var data = out.data;
+    if(!out.ok){
       res.status(502).json({ error: (data && data.error && data.error.message) || "AI service error" });
       return;
     }
