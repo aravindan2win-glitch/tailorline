@@ -64,33 +64,38 @@ async function grantPass(email, plan){
   return { active:true, plan:plan, expires_at:exp };
 }
 
-async function getTailorUsage(email){
+// Generic weekly usage counter keyed by (email, action, week_start).
+async function getUsage(email, action){
   var wk = weekStart();
-  var r = await supa("usage?email=eq." + encodeURIComponent(email) + "&action=eq.tailor&week_start=eq." + wk + "&select=count", {});
+  var r = await supa("usage?email=eq." + encodeURIComponent(email) + "&action=eq." + encodeURIComponent(action) + "&week_start=eq." + wk + "&select=count", {});
   var row = r.data && r.data[0];
   return { week_start:wk, count: row ? (row.count || 0) : 0 };
 }
-
-async function incTailorUsage(email){
+async function incUsage(email, action){
   var wk = weekStart();
-  var u = await getTailorUsage(email);               // small read-then-write; fine at per-user volume
+  var u = await getUsage(email, action);             // small read-then-write; fine at per-user volume
   var next = u.count + 1;
   await supa("usage", {
     method:"POST",
     headers:{ Prefer:"resolution=merge-duplicates,return=minimal" },
-    body: JSON.stringify({ email:email, action:"tailor", week_start:wk, count:next, updated_at:new Date().toISOString() })
+    body: JSON.stringify({ email:email, action:action, week_start:wk, count:next, updated_at:new Date().toISOString() })
   });
   return next;
 }
+function getTailorUsage(email){ return getUsage(email, "tailor"); }
+function incTailorUsage(email){ return incUsage(email, "tailor"); }
 
 module.exports = {
   SUPABASE_URL: SUPABASE_URL,
   TAILOR_FREE_PER_WEEK: TAILOR_FREE_PER_WEEK,
+  CHAT_FREE_PER_WEEK: 3,
   weekStart: weekStart,
   verifyUser: verifyUser,
   supa: supa,
   getPass: getPass,
   grantPass: grantPass,
+  getUsage: getUsage,
+  incUsage: incUsage,
   getTailorUsage: getTailorUsage,
   incTailorUsage: incTailorUsage
 };
