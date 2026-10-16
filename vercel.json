@@ -1,5 +1,7 @@
 {
   "functions": {
-    "api/targets.js": { "maxDuration": 60 }
+    "api/targets.js": { "maxDuration": 60 },
+    "api/tailor.js": { "maxDuration": 30 },
+    "api/chat.js": { "maxDuration": 30 }
   }
 }
