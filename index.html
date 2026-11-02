@@ -295,17 +295,14 @@
   .tabs{display:inline-flex;gap:4px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:4px;margin:0 0 24px;box-shadow:var(--shadow)}
   .tabs button{border:0;background:transparent;color:var(--muted);font:inherit;font-weight:600;font-size:14px;padding:9px 18px;border-radius:9px;cursor:pointer}
   .tabs button[aria-pressed=true]{background:linear-gradient(150deg,var(--accent),var(--accent-ink));color:#fff;box-shadow:var(--shadow)}
-  #view-jobs[hidden],#view-tailor[hidden],#view-targets[hidden]{display:none}
+  #view-tailor[hidden],#view-targets[hidden]{display:none}
 
-  /* ---- target companies ---- */
-  .tgtctrl{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:18px;padding:14px 16px;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow)}
-  .tgtctrl label.fld{font-size:12.5px;color:var(--muted)}
-  .tgtsep{width:1px;align-self:stretch;background:var(--line);margin:0 2px}
-  @media (max-width:600px){.tgtsep{display:none}}
-  .tgtsel{background:var(--surface-2);border:1px solid var(--line);border-radius:9px;color:var(--ink);font-family:inherit;font-size:13.5px;font-weight:600;padding:9px 11px;min-width:190px;cursor:pointer}
-  .tgtsel:focus{border-color:var(--accent);outline:none}
-  #tgtother{flex:1;min-width:170px}
-  .tgtctrl #tgtgo,.tgtctrl #tgtmore{padding:9px 16px}
+  /* ---- find matching jobs ---- */
+  .tgtform{margin-bottom:4px}
+  .tgtrow{display:grid;grid-template-columns:1.3fr 1fr;gap:14px}
+  @media (max-width:640px){.tgtrow{grid-template-columns:1fr}}
+  .tgtsel{width:100%;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;color:var(--ink);font-family:inherit;font-size:14px;font-weight:600;padding:11px 12px;cursor:pointer}
+  .tgtsel:focus{border-color:var(--accent);outline:none;background:var(--surface)}
   .jc-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
   .tag-hot{background:#e6f7ec;color:#137a3e;border:1px solid #bce7cd;border-radius:999px;padding:2px 9px;font-size:12px;font-weight:600}
   .tgt-roles{margin:8px 0 0;padding-left:18px}
@@ -409,8 +406,7 @@
 <div class="wrap">
   <nav class="tabs" id="tabs" role="tablist" aria-label="Sections">
     <button data-view="tailor" aria-pressed="true">Tailor résumé</button>
-    <button data-view="jobs" aria-pressed="false">Find jobs</button>
-    <button data-view="targets" aria-pressed="false">Target companies</button>
+    <button data-view="targets" aria-pressed="false">Find matching jobs</button>
   </nav>
 
   <section id="view-tailor">
@@ -584,37 +580,46 @@
   </div>
   </section>
 
-  <section id="view-jobs" hidden>
-    <div class="lede">
-      <h1>Find your next role.</h1>
-      <p>Search hand-picked openings from top companies hiring in the US and India, then tailor your resume to any one of them in a click. Applying takes you straight to the employer's own page.</p>
-    </div>
-    <form id="jobsearch" class="jobsearch">
-      <input id="jq" type="text" placeholder="Job title, skill, or keyword (e.g. demand generation)" autocomplete="off">
-      <input id="jwhere" type="text" placeholder="City or country — e.g. Bangalore, India, New York (optional)" autocomplete="off">
-      <button type="submit" class="go" style="width:auto;padding:12px 22px;margin-top:0">Search jobs</button>
-    </form>
-    <div id="jobsmsg" class="jobsmsg">Search a role above to see live openings.</div>
-    <div id="joblist" class="joblist"></div>
-    <div style="text-align:center"><button id="jobmore" class="mini jobmore" hidden>Load more jobs</button></div>
-  </section>
-
   <section id="view-targets" hidden>
     <div class="lede">
-      <h1>Target the right companies.</h1>
-      <p>Don't just apply where you already know. Tailorline reads your résumé, finds companies like your most recent employer — same industry, size and stage, in your country — and checks their real job boards to show which are actually hiring for your function right now.</p>
+      <h1>Find companies that are hiring.</h1>
+      <p>Pick a company you'd love to work at (or your current one) and your field. Tailorline finds similar companies — by industry, size, stage and competitors — and checks which have open roles in your field right now, with links straight to their careers pages.</p>
     </div>
-    <button class="go" id="findtargets" style="width:auto;padding:13px 24px">Find my target companies</button>
-    <p class="jobsmsg" id="tgtmsg" style="margin-top:16px">Click above — I read your most recent company and target role straight from the résumé in the “Tailor résumé” tab.</p>
+    <div class="card tgtform">
+      <div class="card-b">
+        <div class="tgtrow">
+          <div class="tgtcol">
+            <label class="fld" for="tgtcompany">Company to match <span>— one you admire or your current one</span></label>
+            <input id="tgtcompany" type="text" list="tgtcompanies" placeholder="e.g. Stripe, Razorpay, HubSpot, Zomato…" autocomplete="off">
+            <datalist id="tgtcompanies"></datalist>
+          </div>
+          <div class="tgtcol">
+            <label class="fld" for="tgtspec">Your field</label>
+            <select id="tgtspec" class="tgtsel">
+              <option value="">Select your field…</option>
+              <option>Sales</option>
+              <option>Marketing</option>
+              <option>Engineering / IT</option>
+              <option>Product</option>
+              <option>Design</option>
+              <option>Data / Analytics</option>
+              <option>Finance / Accounting</option>
+              <option>Operations</option>
+              <option>Supply Chain / Logistics</option>
+              <option>Human Resources</option>
+              <option>Customer Success / Support</option>
+              <option>Business Development</option>
+              <option>Consulting / Strategy</option>
+              <option>Other</option>
+            </select>
+          </div>
+        </div>
+        <button class="go" id="findtargets" style="margin-top:14px">Find matching jobs</button>
+      </div>
+    </div>
+    <p class="jobsmsg" id="tgtmsg" style="margin-top:16px">Enter a company and your field above, then tap <b>Find matching jobs</b>.</p>
     <div id="tgtlist" class="joblist"></div>
-    <div id="tgtctrl" class="tgtctrl" hidden>
-      <button id="tgtmore" class="mini primary">Load more companies</button>
-      <span class="tgtsep"></span>
-      <label class="fld" for="tgtanchor" style="margin:0">Try a different company</label>
-      <select id="tgtanchor" class="tgtsel"></select>
-      <input id="tgtother" type="text" placeholder="Type any company name" hidden>
-      <button id="tgtgo" class="mini">Go</button>
-    </div>
+    <div style="text-align:center;margin-top:14px"><button id="tgtmore" class="mini primary" hidden>Load 20 more companies</button></div>
   </section>
 </div>
 
@@ -1598,178 +1603,107 @@
   /* ---------- view tabs ---------- */
   function showView(v){
     $("#view-tailor").hidden = v!=="tailor";
-    $("#view-jobs").hidden = v!=="jobs";
     $("#view-targets").hidden = v!=="targets";
     [].forEach.call(document.querySelectorAll("#tabs button"),function(b){ b.setAttribute("aria-pressed", b.dataset.view===v?"true":"false"); });
     window.scrollTo({top:0,behavior:"smooth"});
   }
   $("#tabs").addEventListener("click",function(e){ var b=e.target.closest("button[data-view]"); if(b) showView(b.dataset.view); });
 
-  /* ---------- target companies (live via /api/targets) ---------- */
-  var tgtBtn=$("#findtargets"), tgtMsg=$("#tgtmsg"), tgtList=$("#tgtlist");
-  var tgtCtrl=$("#tgtctrl"), tgtSel=$("#tgtanchor"), tgtOther=$("#tgtother"), tgtGo=$("#tgtgo"), tgtMore=$("#tgtmore");
-  var OTHER="__other__";
-  var tgtAnchor="";          // the company we're currently finding peers of
-  var tgtFunc="";            // detected target function
-  var tgtShown=[];           // names already displayed (so "load more" fetches fresh ones)
+  /* ---------- find matching jobs (companies via /api/targets) ---------- */
+  var tgtBtn=$("#findtargets"), tgtMsg=$("#tgtmsg"), tgtList=$("#tgtlist"), tgtMore=$("#tgtmore");
+  var tgtCompanyEl=$("#tgtcompany"), tgtSpecEl=$("#tgtspec"), tgtDatalist=$("#tgtcompanies");
+  var tgtCompany="";         // the company we're currently finding peers of
+  var tgtSpec="";            // the chosen field/specialization
+  var tgtShown=[];           // company names already displayed (so "load more" fetches fresh ones)
+
+  // a few well-known names so the input offers autocomplete suggestions
+  if(tgtDatalist){
+    ["Stripe","Razorpay","HubSpot","Salesforce","Zomato","Swiggy","Freshworks","Zoho","Flipkart","Google","Microsoft","Amazon","Shopify","Atlassian","Notion","Figma","Databricks","Snowflake","Airbnb","Uber","Zerodha","CRED","PhonePe","Paytm","Infosys","TCS","Deloitte","Accenture"]
+      .forEach(function(n){ var o=document.createElement("option"); o.value=n; tgtDatalist.appendChild(o); });
+  }
+
   function targetCard(c, func){
     var el=document.createElement("div"); el.className="jobcard";
     var head='<div class="jc-top"><span class="jc-title">'+esc(c.name)+'</span>';
-    if(c.hiring){ head+=' <span class="tag-hot">✓ '+c.matchCount+' matching role'+(c.matchCount>1?'s':'')+'</span>'; }
+    if(c.hiring){ head+=' <span class="tag-hot">✓ '+c.matchCount+' open '+esc(func||"role")+' role'+(c.matchCount>1?'s':'')+'</span>'; }
     head+='</div>';
+    var bits=[];
+    if(c.size) bits.push(esc(c.size));
+    if(c.stage) bits.push(esc(c.stage));
+    if(c.hq) bits.push(esc(c.hq));
+    var meta=bits.length?('<div class="jc-bits">'+bits.join("   ·   ")+'</div>'):'';
     var why=c.why?('<div class="jc-desc">'+esc(c.why)+'</div>'):'';
     var links;
     if(c.hiring && c.roles && c.roles.length){
       links='<ul class="tgt-roles">'+c.roles.map(function(r){
         return '<li><a href="'+esc(r.url)+'" target="_blank" rel="noopener noreferrer">'+esc(r.title)+' ↗</a></li>';
-      }).join('')+'</ul>';
+      }).join('');
+      if(c.careersUrl){ links+='<li><a href="'+esc(c.careersUrl)+'" target="_blank" rel="noopener noreferrer">All openings at '+esc(c.name)+' ↗</a></li>'; }
+      links+='</ul>';
     } else {
       var url=c.careersUrl||('https://www.google.com/search?q='+encodeURIComponent(c.name+' careers '+(func||'')));
-      links='<div class="jc-actions"><a class="mini" href="'+esc(url)+'" target="_blank" rel="noopener noreferrer">See their openings ↗</a></div>';
+      var label=c.careersUrl ? ('Check their '+esc(func||"")+' openings ↗') : ('Search '+esc(c.name)+' careers ↗');
+      links='<div class="jc-actions"><a class="mini" href="'+esc(url)+'" target="_blank" rel="noopener noreferrer">'+label+'</a></div>';
     }
-    el.innerHTML=head+why+links;
+    el.innerHTML=head+meta+why+links;
     return el;
   }
-  // build the "try a different company" dropdown from the résumé's employer list + an "Other" option
-  function fillAnchors(employers, selected){
-    if(!tgtSel) return;
-    var added={}, opts=[];
-    function opt(val,label){ if(val&&!added[val.toLowerCase()]){ added[val.toLowerCase()]=1; opts.push('<option value="'+esc(val)+'">'+esc(label)+'</option>'); } }
-    (employers||[]).forEach(function(e){ opt(e,e); });
-    if(selected){ opt(selected,selected); }              // always include the current anchor
-    tgtSel.innerHTML = opts.join("") + '<option value="'+OTHER+'">Other company…</option>';
-    tgtSel.value = (selected && added[selected.toLowerCase()]) ? selected : OTHER;
-    if(tgtOther){ tgtOther.hidden = tgtSel.value!==OTHER; }
-  }
-  function setBusy(b){ if(tgtBtn)tgtBtn.disabled=b; if(tgtGo)tgtGo.disabled=b; if(tgtMore)tgtMore.disabled=b; }
+  function setBusy(b){ if(tgtBtn)tgtBtn.disabled=b; if(tgtMore)tgtMore.disabled=b; }
 
-  // anchor = company to find peers of (null = auto/most-recent). append = add to the list (Load more).
-  function loadTargets(anchor, append){
-    var resume=(resumeEl.value||"").trim();
-    if(resume.length<60){
-      tgtMsg.innerHTML='Add your résumé in the <b>“Tailor résumé”</b> tab first — I read your companies and target role from it.';
-      return;
+  // company + specialization chosen by the user. append = add to the list (Load more).
+  function loadTargets(append){
+    if(!append){
+      tgtCompany=(tgtCompanyEl.value||"").trim();
+      tgtSpec=(tgtSpecEl.value||"").trim();
     }
+    if(!tgtCompany){ toast("Type a company you'd like to match first."); tgtCompanyEl.focus(); return; }
+    if(!tgtSpec){ toast("Pick your field so I can check the right roles."); tgtSpecEl.focus(); return; }
+    // calling the AI costs money — require sign-in first (free: 5 companies)
+    if(authReady && !ACCOUNT){ $("#authmodal").hidden=false; toast("Sign in to find matching jobs — it's free."); return; }
+
     setBusy(true);
-    var who = anchor || tgtAnchor;
     if(append){
-      tgtMsg.textContent = "Finding more companies like "+(who||"your last employer")+"…";
+      tgtMsg.textContent = "Finding 20 more companies like "+tgtCompany+"…";
     } else {
       tgtList.innerHTML=""; tgtShown=[];
-      tgtMsg.textContent = anchor
-        ? ("Finding companies like "+anchor+" and checking who's hiring… this can take a few seconds.")
-        : "Finding companies like your most recent employer and checking who's hiring… this can take a few seconds.";
+      if(tgtMore) tgtMore.hidden=true;
+      tgtMsg.textContent = "Looking at "+tgtCompany+"'s size, stage and competitors, building a list of 20 similar companies, and checking their careers pages for open "+tgtSpec+" roles… this takes a little while.";
     }
-    var payload={resume:resume};
-    if(!append && anchor){ payload.anchorCompany=anchor; }
-    if(append){ if(tgtAnchor){ payload.anchorCompany=tgtAnchor; } payload.exclude=tgtShown.slice(); }
-    fetch("/api/targets",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)})
-      .then(function(r){ return r.text().then(function(tx){ var j=null; try{ j=JSON.parse(tx); }catch(e){} return {ok:r.ok,j:j}; }); })
+    var hdrs={"Content-Type":"application/json"}; if(ACCOUNT&&ACCOUNT.token) hdrs.Authorization="Bearer "+ACCOUNT.token;
+    var payload={company:tgtCompany, specialization:tgtSpec};
+    if(append){ payload.exclude=tgtShown.slice(); }
+    fetch("/api/targets",{method:"POST",headers:hdrs,body:JSON.stringify(payload)})
+      .then(function(r){ return r.text().then(function(tx){ var j=null; try{ j=JSON.parse(tx); }catch(e){} return {ok:r.ok,status:r.status,j:j}; }); })
       .then(function(res){
+        if(res.status===401){ $("#authmodal").hidden=false; toast("Please sign in to continue."); return; }
+        if(res.status===402){ refreshEntitlement(); openPaywall("Unlock unlimited company matches and 'load 20 more' with a pass."); return; }
         if(!res.j){ throw new Error(res.ok?"The server sent back an unexpected response — try again in a moment.":"The AI is busy or the request timed out — give it a few seconds and tap the button again."); }
         if(!res.ok){ throw new Error(res.j.error||"Something went wrong"); }
         var cos=(res.j.companies||[]).filter(function(c){ return c.name && tgtShown.indexOf(c.name)===-1; });
-        // remember what we're anchored on + the function, and (re)build the picker
-        if(!append){
-          tgtAnchor = res.j.lastCompany || anchor || "";
-          tgtFunc = res.j.targetFunction || "";
-          fillAnchors(res.j.employers, tgtAnchor);
-        }
         var locked = segmentLocked();
-        if(tgtCtrl) tgtCtrl.hidden = locked ? true : false;   // free users don't get Load more / change company
         if(!cos.length){
           tgtMsg.textContent = append
-            ? "That's all I can find for now — try a different company instead."
-            : "Couldn't find good matches this time — try again, or pick a different company below.";
+            ? "That's all I can find like "+tgtCompany+" for now — try a different company."
+            : "Couldn't find good matches for "+tgtCompany+" this time — try again, or try a different company.";
+          if(tgtMore) tgtMore.hidden=true;
           return;
         }
         if(locked){ cos = cos.slice(0, Math.max(0, FREE_PER_SEGMENT - tgtShown.length)); }  // cap free users at 5
-        cos.forEach(function(c){ tgtShown.push(c.name); tgtList.appendChild(targetCard(c, tgtFunc)); });
+        cos.forEach(function(c){ tgtShown.push(c.name); tgtList.appendChild(targetCard(c, tgtSpec)); });
         var hiring=tgtList.querySelectorAll(".tag-hot").length;
-        var tail = locked ? "" : " <span style=\"color:var(--faint)\">Load more, or pick another company below.</span>";
-        tgtMsg.innerHTML="Showing <b>"+tgtShown.length+"</b> companies like <b>"+esc(tgtAnchor||"your last role")+"</b>, targeting <b>"+esc(tgtFunc||"your function")+"</b>"+(res.j.region?(" in "+esc(res.j.region)):"")+". "+(hiring?("<b>"+hiring+"</b> are hiring that function right now — those show a green badge."):"")+tail;
-        if(locked){ lockNotice(tgtList, "You're seeing 5 peers. Unlock unlimited companies and the 'try another company' tool with a pass."); }
+        tgtMsg.innerHTML="Showing <b>"+tgtShown.length+"</b> companies like <b>"+esc(tgtCompany)+"</b>, hiring in <b>"+esc(tgtSpec)+"</b>. "+(hiring?("<b>"+hiring+"</b> have confirmed open "+esc(tgtSpec)+" roles right now (green badge, with direct links). The rest show a careers-page link so you can check yourself."):"Tap any careers link to check their openings.");
+        if(locked){
+          if(tgtMore) tgtMore.hidden=true;
+          lockNotice(tgtList, "You're seeing 5 companies. Unlock the full list of 20 and 'load 20 more' with a pass.");
+        } else {
+          if(tgtMore) tgtMore.hidden=false;
+        }
       })
-      .catch(function(err){ tgtMsg.textContent="Couldn't load suggestions right now — "+((err&&err.message)||"try again shortly")+"."; })
+      .catch(function(err){ tgtMsg.textContent="Couldn't load matches right now — "+((err&&err.message)||"try again shortly")+"."; })
       .then(function(){ setBusy(false); });
   }
-  if(tgtBtn){ tgtBtn.addEventListener("click",function(){ loadTargets(null,false); }); }
-  if(tgtMore){ tgtMore.addEventListener("click",function(){ loadTargets(null,true); }); }
-  if(tgtSel){ tgtSel.addEventListener("change",function(){ if(tgtOther){ tgtOther.hidden = tgtSel.value!==OTHER; if(!tgtOther.hidden){ tgtOther.focus(); } } }); }
-  if(tgtGo){
-    tgtGo.addEventListener("click",function(){
-      var anchor = (tgtSel.value===OTHER) ? (tgtOther.value||"").trim() : tgtSel.value;
-      if(tgtSel.value===OTHER && !anchor){ tgtOther.focus(); return; }
-      loadTargets(anchor,false);
-    });
-  }
-  if(tgtOther){ tgtOther.addEventListener("keydown",function(e){ if(e.key==="Enter"){ e.preventDefault(); tgtGo.click(); } }); }
-
-  /* ---------- job board (live via /api/jobs) ---------- */
-  var jobPage=1, jobQ="", jobWhere="";
-  function timeAgo(iso){
-    if(!iso) return "";
-    var t=new Date(iso).getTime(); if(isNaN(t)) return "";
-    var day=Math.floor((Date.now()-t)/86400000);
-    if(day<=0) return "today"; if(day===1) return "1 day ago";
-    if(day<30) return day+" days ago";
-    var mo=Math.floor(day/30); return mo+(mo===1?" month ago":" months ago");
-  }
-  function jobCard(j){
-    var el=document.createElement("div"); el.className="jobcard";
-    var meta=[j.company,j.location].filter(Boolean).join(" · ");
-    var bits=[]; if(j.source) bits.push("via "+j.source); if(j.created) bits.push(timeAgo(j.created)); if(j.salary) bits.push(j.salary);
-    var desc=(j.description||""); if(desc.length>280) desc=desc.slice(0,280)+"…";
-    el.innerHTML=
-      '<div class="jc-title">'+esc(j.title||"Untitled role")+'</div>'+
-      '<div class="jc-meta">'+esc(meta)+'</div>'+
-      (bits.length?'<div class="jc-bits">'+esc(bits.join("   ·   "))+'</div>':'')+
-      '<div class="jc-desc">'+esc(desc)+'</div>'+
-      '<div class="jc-actions"></div>';
-    var actions=el.querySelector(".jc-actions");
-    var tailor=document.createElement("button"); tailor.className="mini primary"; tailor.textContent="Tailor my resume →";
-    tailor.addEventListener("click",function(){
-      function load(text){
-        jdEl.value=text||j.title||""; checkReady();
-        showView("tailor");
-        setTimeout(function(){ jdEl.scrollIntoView({behavior:"smooth",block:"center"}); jdEl.focus(); },250);
-        toast("Job loaded — add your resume and tailor");
-      }
-      if(j.description){ load(j.description); return; }
-      if(j.gh && j.id){
-        toast("Loading job description…");
-        fetch("/api/job?token="+encodeURIComponent(j.gh)+"&id="+encodeURIComponent(j.id))
-          .then(function(r){return r.json();})
-          .then(function(d){ load((d&&d.description)||j.title); })
-          .catch(function(){ load(j.title); });
-      } else { load(j.title); }
-    });
-    var apply=document.createElement("a"); apply.className="mini"; apply.textContent="Apply ↗";
-    apply.href=j.url||"#"; apply.target="_blank"; apply.rel="noopener noreferrer";
-    actions.appendChild(tailor); actions.appendChild(apply);
-    return el;
-  }
-  function searchJobs(reset){
-    var list=$("#joblist"), msg=$("#jobsmsg"), more=$("#jobmore");
-    if(reset){ jobPage=1; list.innerHTML=""; jobQ=$("#jq").value.trim(); jobWhere=$("#jwhere").value.trim(); }
-    if(!jobQ){ msg.textContent="Type a job title or keyword to search."; return; }
-    msg.textContent = reset ? "Searching…" : "Loading more…"; more.hidden=true;
-    var url="/api/jobs?q="+encodeURIComponent(jobQ)+"&where="+encodeURIComponent(jobWhere)+"&page="+jobPage;
-    fetch(url).then(function(r){return r.json().then(function(j){return {ok:r.ok,j:j}})}).then(function(res){
-      if(!res.ok || !res.j || !res.j.jobs) throw new Error((res.j&&res.j.error)||"Search failed");
-      var jobs=res.j.jobs;
-      if(jobPage===1 && !jobs.length){ msg.textContent="No matches yet — try a broader title like “engineer”, “marketing”, “product”, or “data”."; return; }
-      var total = (res.j.total!=null) ? res.j.total : jobs.length;
-      msg.textContent = total+' matching job'+(total===1?"":"s")+' for "'+jobQ+'"'+(jobWhere?(" in "+jobWhere):"")+" — direct from employers";
-      if(segmentLocked()){ jobs=jobs.slice(0, FREE_PER_SEGMENT); }    // free users see 5
-      jobs.forEach(function(j){ list.appendChild(jobCard(j)); });
-      if(segmentLocked()){ more.hidden=true; lockNotice(list, "You're seeing 5 of many. Unlock unlimited jobs with a pass."); }
-      else { more.hidden = jobs.length<10; }
-    }).catch(function(err){
-      msg.textContent = "Couldn't load jobs right now — "+((err&&err.message)||"try again shortly")+".";
-    });
-  }
-  $("#jobsearch").addEventListener("submit",function(e){ e.preventDefault(); searchJobs(true); });
-  $("#jobmore").addEventListener("click",function(){ jobPage++; searchJobs(false); });
+  if(tgtBtn){ tgtBtn.addEventListener("click",function(){ loadTargets(false); }); }
+  if(tgtMore){ tgtMore.addEventListener("click",function(){ loadTargets(true); }); }
+  if(tgtCompanyEl){ tgtCompanyEl.addEventListener("keydown",function(e){ if(e.key==="Enter"){ e.preventDefault(); loadTargets(false); } }); }
 })();
 </script>
