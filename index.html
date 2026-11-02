@@ -1643,13 +1643,16 @@
   // strip date tokens so the separators that remain are real field separators, not date ranges
   function stripDates(s){
     return s
+      .replace(/\b\d{1,2}\s*[\/.\-]\s*(19|20)?\d{2}\b/g," ")   // 07/2024, 7-24, 07.2024
       .replace(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?\b/gi," ")
       .replace(/\b(19|20)\d{2}\b/g," ")
       .replace(/\b(present|current|ongoing|to date|till date|now)\b/gi," ")
-      .replace(/\(\s*\)/g," ")
+      .replace(/\b\d{1,2}\s*\/\s*/g," ")                        // leftover "07/" after a year was stripped
+      .replace(/\([^A-Za-z]*\)/g," ")                           // empty / date-only parens "( - )", keep "(Winuall)"
       .replace(/\s{2,}/g," ").trim();
   }
-  function trimEdges(s){ return s.replace(/^[\s,|•·()\-–—]+|[\s,|•·()\-–—]+$/g,"").trim(); }
+  function trimEdges(s){ return s.replace(/^[\s,|•·\-–—\/]+|[\s,|•·\-–—\/]+$/g,"").replace(/\s+\d{1,2}$/,"").trim(); }
+  var ACTIONVERB=/^(led|managed|manage|built|build|drove|drive|created|create|developed|develop|handled|handle|ran|run|designed|design|launched|launch|grew|grow|owned|own|spearheaded|executed|execute|delivered|deliver|supported|support|improved|improve|increased|increase|reduced|reduce|achieved|achieve|coordinated|oversaw|implemented|implement|established|generated|generate|analyzed|conducted|performed|perform|maintained|maintain|provided|provide|worked|work|responsible)\b/i;
   function companyFromRole(text){
     var base=stripDates(text);
     // "Title at Company" form
@@ -1662,6 +1665,8 @@
     // all look like titles -> take the last (often "Title, Title, Company" won't happen; fall back)
     return parts[parts.length-1];
   }
+  // a real employer line starts like a proper noun (upper-case or a digit, e.g. "3M") — filters stray words like "participation"
+  function looksLikeCompany(c){ return !!c && c.length>=2 && c.length<=60 && /^[A-Z0-9]/.test(c) && /[A-Za-z]/.test(c) && !ACTIONVERB.test(c); }
   function extractEmployers(text){
     if(!text || text.trim().length<40) return [];
     var model; try{ model=parseResume(text); }catch(e){ return []; }
@@ -1676,7 +1681,7 @@
     var seen={}, out=[];
     roles.forEach(function(r){
       var c=companyFromRole(r);
-      if(c && c.length>=2 && c.length<=60 && /[A-Za-z]/.test(c)){
+      if(looksLikeCompany(c)){
         var k=c.toLowerCase();
         if(!seen[k]){ seen[k]=1; out.push(c); }
       }
