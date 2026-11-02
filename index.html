@@ -582,16 +582,16 @@
 
   <section id="view-targets" hidden>
     <div class="lede">
-      <h1>Find companies that are hiring.</h1>
-      <p>Pick a company you'd love to work at (or your current one) and your field. Tailorline finds similar companies — by industry, size, stage and competitors — and checks which have open roles in your field right now, with links straight to their careers pages.</p>
+      <h1>Find companies like the ones you've worked at.</h1>
+      <p>Pick one of the companies from your work history and your field. Tailorline finds similar companies — by industry, size, stage and competitors — and checks which have open roles in your field right now, with links straight to their careers pages.</p>
     </div>
     <div class="card tgtform">
       <div class="card-b">
         <div class="tgtrow">
           <div class="tgtcol">
-            <label class="fld" for="tgtcompany">Company to match <span>— one you admire or your current one</span></label>
-            <input id="tgtcompany" type="text" list="tgtcompanies" placeholder="e.g. Stripe, Razorpay, HubSpot, Zomato…" autocomplete="off">
-            <datalist id="tgtcompanies"></datalist>
+            <label class="fld" for="tgtcompany">Company to match <span>— from your work history</span></label>
+            <select id="tgtcompany" class="tgtsel"><option value="">Select a company…</option></select>
+            <input id="tgtother" type="text" placeholder="Type a company name" autocomplete="off" hidden style="margin-top:8px">
           </div>
           <div class="tgtcol">
             <label class="fld" for="tgtspec">Your field</label>
@@ -617,7 +617,7 @@
         <button class="go" id="findtargets" style="margin-top:14px">Find matching jobs</button>
       </div>
     </div>
-    <p class="jobsmsg" id="tgtmsg" style="margin-top:16px">Enter a company and your field above, then tap <b>Find matching jobs</b>.</p>
+    <p class="jobsmsg" id="tgtmsg" style="margin-top:16px">Pick a company from your work history and your field above, then tap <b>Find matching jobs</b>.</p>
     <div id="tgtlist" class="joblist"></div>
     <div style="text-align:center;margin-top:14px"><button id="tgtmore" class="mini primary" hidden>Load 20 more companies</button></div>
   </section>
@@ -921,7 +921,16 @@
   var STOP=new Set(("a an the and or but if then else for to of in on at by with from into over under again further once here there all any both each few more most other some such no nor not only own same so than too very can will just don should now able across you your our we us they them their this that these those is are was were be been being have has had do does did a as it its will would could may might must shall we're you're they're etc via per we our role team work working experience years year ability strong excellent good great using use used help within across including include includes required require requires responsibilities responsible looking join company candidate candidates ideal plus preferred must-have nice about who what when where which while based like well also make making made new key ").split(/\s+/));
   var SKILLS=new Set(("python java javascript typescript react node nodejs angular vue sql nosql mysql postgresql postgres mongodb redis aws azure gcp docker kubernetes terraform git ci cd cicd jenkins linux html css sass rest graphql api apis microservices agile scrum kanban jira figma sketch photoshop illustrator excel powerpoint word tableau powerbi looker sap salesforce hubspot marketo seo sem ppc analytics ga4 saas b2b b2c crm erp kpi roi p&l pnl forecasting budgeting modeling php ruby rails go golang rust swift kotlin c c++ csharp .net dotnet spring django flask fastapi pandas numpy pytorch tensorflow scikit ml ai llm nlp etl airflow spark hadoop kafka snowflake databricks bi dashboards email campaigns copywriting branding wireframing prototyping ux ui accessibility wcag onboarding retention churn gtm procurement logistics compliance audit gaap ifrs reconciliation payroll recruiting sourcing stakeholder stakeholders roadmap backlog automation testing qa selenium cypress playwright api-testing devops sre observability grafana prometheus datadog demand generation pipeline lead acquisition outbound inbound abm").split(/\s+/));
   // generic verbs/words that are not distinguishing keywords on their own
-  var GENERIC=new Set(("build built building manage managed managing manages run running ran drive driven driving create creating created created develop developing developed support supporting supported lead leading led help helping ensure ensuring deliver delivering delivered own owning owned join joining looking use using used handle handling execute executing partner partnering collaborate working provide providing maintain maintaining perform performing responsible required strong proven excellent ability able years year plus preferred etc across various multiple key core new global end").split(/\s+/));
+  var GENERIC=new Set(("build built building manage managed managing manages run running ran drive driven driving create creating created created develop developing developed support supporting supported lead leading led help helping ensure ensuring deliver delivering delivered own owning owned join joining looking use using used handle handling execute executing partner partnering collaborate working provide providing maintain maintaining perform performing responsible required strong proven excellent ability able years year plus preferred etc across various multiple key core new global end grow growing grew scale scaling scaled set setting manage understand understanding meet meeting track tracking report reporting improve improving increase increasing reduce reducing").split(/\s+/));
+
+  // extra filler that keeps leaking into keyword chips — pronouns, vague quantity words, soft adjectives
+  ("yourself myself himself herself itself themselves ourselves oneself someone anyone everyone nobody something anything everything nothing personally personal number numbers amount amounts least most many much several various lots lot bit buyer buyers seller sellers people person someone thing things stuff area areas way ways part parts level levels type types kind kinds sort range side point points matter day days time times week weeks month months today daily really actually simply basically overall general generally often sometimes always never fully highly truly greatly quickly closely directly effectively efficiently successfully accountable reliable passionate motivated detail oriented driven minded self you'll we'll they'll it'll i'll let lets").split(/\s+/).forEach(function(w){ STOP.add(w); });
+
+  // display casing for acronyms / known terms (lower-case key -> pretty label)
+  var LABELS={seo:"SEO",sem:"SEM",ppc:"PPC",crm:"CRM",erp:"ERP",saas:"SaaS",paas:"PaaS",iaas:"IaaS",b2b:"B2B",b2c:"B2C",b2b2c:"B2B2C",roi:"ROI",kpi:"KPI","kpis":"KPIs",gtm:"GTM",ga4:"GA4",ui:"UI",ux:"UX","ui/ux":"UI/UX",api:"API",apis:"APIs",sql:"SQL",nosql:"NoSQL",aws:"AWS",gcp:"GCP",abm:"ABM",sdr:"SDR",bdr:"BDR",hr:"HR",qa:"QA",ai:"AI",ml:"ML",nlp:"NLP",llm:"LLM",etl:"ETL",bi:"BI","p&l":"P&L",pnl:"P&L",cicd:"CI/CD",devops:"DevOps",sre:"SRE","go-to-market":"Go-to-Market",ios:"iOS",css:"CSS",html:"HTML",php:"PHP",".net":".NET",dotnet:".NET",ga:"GA",ads:"Ads","fp&a":"FP&A",gaap:"GAAP",ifrs:"IFRS",wcag:"WCAG"};
+  function prettyLabel(term){
+    return term.split(" ").map(function(w){ return LABELS[w] || w.replace(/\b\w/g,function(m){return m.toUpperCase()}); }).join(" ");
+  }
 
   function words(t){ return (t.toLowerCase().match(/[a-z][a-z0-9+.#/-]{1,}/g)||[]); }
   function clean(w){ return w.replace(/^[-.#/]+|[-.#/]+$/g,""); }
@@ -944,12 +953,20 @@
     }
     var cand=[];
     Object.keys(bi).forEach(function(p){
-      if(bi[p]>=2){ cand.push({term:p,count:bi[p],w:bi[p]*2.2,phrase:true}); }
+      if(bi[p]<2) return;
+      var a=p.split(" ")[0], b=p.split(" ")[1];
+      if(a===b) return; // "marketing marketing"
+      // a good phrase has neither word generic/adverbial — kills "run seo", "campaigns yourself"
+      if((GENERIC.has(a)&&!SKILLS.has(a)) || (GENERIC.has(b)&&!SKILLS.has(b))) return;
+      if(/ly$/.test(a)||/ly$/.test(b)) return;
+      cand.push({term:p,count:bi[p],w:bi[p]*2.2,phrase:true});
     });
     Object.keys(uni).forEach(function(w){
-      if(GENERIC.has(w) && !SKILLS.has(w)) return; // skip generic verbs
-      var boost = SKILLS.has(w)?2.6:1;
-      cand.push({term:w,count:uni[w],w:uni[w]*boost,phrase:false});
+      if(SKILLS.has(w)){ cand.push({term:w,count:uni[w],w:uni[w]*2.6,phrase:false}); return; }
+      if(GENERIC.has(w)) return;        // skip generic verbs
+      if(/ly$/.test(w)) return;         // skip adverbs (personally, quickly…)
+      if(uni[w]<2) return;              // a non-skill word must appear at least twice to count
+      cand.push({term:w,count:uni[w],w:uni[w]*1,phrase:false});
     });
     // drop unigrams already covered by a kept phrase
     cand.sort(function(a,b){return b.w-a.w});
@@ -965,8 +982,8 @@
       seen.add(c.term);
       chosen.push(c);
     }
-    // pretty label
-    chosen.forEach(function(c){ c.label=c.term.replace(/\b\w/g,function(m){return m.toUpperCase()}); });
+    // pretty label (acronyms cased correctly: SEO, CRM, B2B, SaaS…)
+    chosen.forEach(function(c){ c.label=prettyLabel(c.term); });
     return chosen;
   }
 
@@ -1605,22 +1622,88 @@
     $("#view-tailor").hidden = v!=="tailor";
     $("#view-targets").hidden = v!=="targets";
     [].forEach.call(document.querySelectorAll("#tabs button"),function(b){ b.setAttribute("aria-pressed", b.dataset.view===v?"true":"false"); });
+    if(v==="targets") fillCompanies();
     window.scrollTo({top:0,behavior:"smooth"});
   }
   $("#tabs").addEventListener("click",function(e){ var b=e.target.closest("button[data-view]"); if(b) showView(b.dataset.view); });
 
   /* ---------- find matching jobs (companies via /api/targets) ---------- */
   var tgtBtn=$("#findtargets"), tgtMsg=$("#tgtmsg"), tgtList=$("#tgtlist"), tgtMore=$("#tgtmore");
-  var tgtCompanyEl=$("#tgtcompany"), tgtSpecEl=$("#tgtspec"), tgtDatalist=$("#tgtcompanies");
+  var tgtCompanyEl=$("#tgtcompany"), tgtOtherEl=$("#tgtother"), tgtSpecEl=$("#tgtspec");
+  var OTHER="__other__";
   var tgtCompany="";         // the company we're currently finding peers of
   var tgtSpec="";            // the chosen field/specialization
   var tgtShown=[];           // company names already displayed (so "load more" fetches fresh ones)
+  var lastEmployerKey="";    // signature of the last résumé we built the dropdown from
 
-  // a few well-known names so the input offers autocomplete suggestions
-  if(tgtDatalist){
-    ["Stripe","Razorpay","HubSpot","Salesforce","Zomato","Swiggy","Freshworks","Zoho","Flipkart","Google","Microsoft","Amazon","Shopify","Atlassian","Notion","Figma","Databricks","Snowflake","Airbnb","Uber","Zerodha","CRED","PhonePe","Paytm","Infosys","TCS","Deloitte","Accenture"]
-      .forEach(function(n){ var o=document.createElement("option"); o.value=n; tgtDatalist.appendChild(o); });
+  // Pull the employer names out of the résumé the person pasted in the Tailor tab.
+  // The parser already tags "role" lines (Company | Title | Dates); we take the company part.
+  var TITLEWORDS=/\b(manager|engineer|developer|lead|director|analyst|specialist|associate|executive|consultant|designer|architect|administrator|coordinator|officer|intern|internship|president|vp|head|supervisor|representative|strategist|scientist|marketer|marketing|sales|accountant|recruiter|founder|owner|partner|advisor|agent|assistant|clerk|technician|programmer|operator|planner|controller|auditor|trainer|teacher|professor|nurse|doctor|writer|editor|producer|generalist|graduate|trainee)\b/i;
+  var SKIP_SECTION=/(education|certificat|licen|award|honor|publication|language|skill|competenc|interest|activit|volunteer|reference|project|training|course)/i;
+  // strip date tokens so the separators that remain are real field separators, not date ranges
+  function stripDates(s){
+    return s
+      .replace(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?\b/gi," ")
+      .replace(/\b(19|20)\d{2}\b/g," ")
+      .replace(/\b(present|current|ongoing|to date|till date|now)\b/gi," ")
+      .replace(/\(\s*\)/g," ")
+      .replace(/\s{2,}/g," ").trim();
   }
+  function trimEdges(s){ return s.replace(/^[\s,|•·()\-–—]+|[\s,|•·()\-–—]+$/g,"").trim(); }
+  function companyFromRole(text){
+    var base=stripDates(text);
+    // "Title at Company" form
+    var at=base.match(/\bat\s+([^|,•·–—]+)$/i);
+    if(at){ var a=trimEdges(at[1]); if(a && !TITLEWORDS.test(a)) return a; }
+    var parts=base.split(/\s*[|•·,–—]\s*|\s+-\s+/).map(trimEdges).filter(Boolean);
+    if(!parts.length) return "";
+    // prefer the first segment that doesn't read like a job title
+    for(var i=0;i<parts.length;i++){ if(!TITLEWORDS.test(parts[i])) return parts[i]; }
+    // all look like titles -> take the last (often "Title, Title, Company" won't happen; fall back)
+    return parts[parts.length-1];
+  }
+  function extractEmployers(text){
+    if(!text || text.trim().length<40) return [];
+    var model; try{ model=parseResume(text); }catch(e){ return []; }
+    var roles=[];
+    // top-level role lines + roles inside work/experience sections; skip education, skills, etc.
+    (model.blocks||[]).forEach(function(b){
+      if(b.type==="role"){ roles.push(b.text); }
+      else if(b.type==="section" && !SKIP_SECTION.test(b.title||"")){
+        (b.items||[]).forEach(function(it){ if(it.type==="role") roles.push(it.text); });
+      }
+    });
+    var seen={}, out=[];
+    roles.forEach(function(r){
+      var c=companyFromRole(r);
+      if(c && c.length>=2 && c.length<=60 && /[A-Za-z]/.test(c)){
+        var k=c.toLowerCase();
+        if(!seen[k]){ seen[k]=1; out.push(c); }
+      }
+    });
+    return out.slice(0,20);
+  }
+  function fillCompanies(){
+    var text=(resumeEl.value||"");
+    var key=text.trim().slice(0,400);
+    if(key===lastEmployerKey) return;          // résumé unchanged — keep the current selection
+    lastEmployerKey=key;
+    var emps=extractEmployers(text);
+    var prev=tgtCompanyEl.value;
+    var opts='<option value="">Select a company…</option>';
+    emps.forEach(function(e){ opts+='<option value="'+esc(e)+'">'+esc(e)+'</option>'; });
+    opts+='<option value="'+OTHER+'">Other (type a company)…</option>';
+    tgtCompanyEl.innerHTML=opts;
+    // keep the previous pick if it's still there
+    if(prev && (prev===OTHER || emps.indexOf(prev)!==-1)) tgtCompanyEl.value=prev;
+    if(tgtOtherEl) tgtOtherEl.hidden = tgtCompanyEl.value!==OTHER;
+    if(!emps.length){
+      tgtMsg.innerHTML='Add your résumé in the <b>“Tailor résumé”</b> tab first — I read the companies you\'ve worked at from it. Or choose <b>Other</b> to type one.';
+    }
+  }
+  if(tgtCompanyEl){ tgtCompanyEl.addEventListener("change",function(){
+    if(tgtOtherEl){ tgtOtherEl.hidden = tgtCompanyEl.value!==OTHER; if(!tgtOtherEl.hidden) tgtOtherEl.focus(); }
+  }); }
 
   function targetCard(c, func){
     var el=document.createElement("div"); el.className="jobcard";
@@ -1653,10 +1736,15 @@
   // company + specialization chosen by the user. append = add to the list (Load more).
   function loadTargets(append){
     if(!append){
-      tgtCompany=(tgtCompanyEl.value||"").trim();
+      var sel=(tgtCompanyEl.value||"").trim();
+      tgtCompany = (sel===OTHER) ? (tgtOtherEl.value||"").trim() : sel;
       tgtSpec=(tgtSpecEl.value||"").trim();
     }
-    if(!tgtCompany){ toast("Type a company you'd like to match first."); tgtCompanyEl.focus(); return; }
+    if(!tgtCompany){
+      if((tgtCompanyEl.value||"")===OTHER){ toast("Type a company name first."); if(tgtOtherEl) tgtOtherEl.focus(); }
+      else { toast("Pick a company from your work history first."); tgtCompanyEl.focus(); }
+      return;
+    }
     if(!tgtSpec){ toast("Pick your field so I can check the right roles."); tgtSpecEl.focus(); return; }
     // calling the AI costs money — require sign-in first (free: 5 companies)
     if(authReady && !ACCOUNT){ $("#authmodal").hidden=false; toast("Sign in to find matching jobs — it's free."); return; }
@@ -1704,6 +1792,6 @@
   }
   if(tgtBtn){ tgtBtn.addEventListener("click",function(){ loadTargets(false); }); }
   if(tgtMore){ tgtMore.addEventListener("click",function(){ loadTargets(true); }); }
-  if(tgtCompanyEl){ tgtCompanyEl.addEventListener("keydown",function(e){ if(e.key==="Enter"){ e.preventDefault(); loadTargets(false); } }); }
+  if(tgtOtherEl){ tgtOtherEl.addEventListener("keydown",function(e){ if(e.key==="Enter"){ e.preventDefault(); loadTargets(false); } }); }
 })();
 </script>
