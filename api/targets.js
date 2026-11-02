@@ -32,6 +32,21 @@ var SYS = [
 
 function clean(s){ return String(s || "").replace(/\s+/g, " ").trim(); }
 
+// Pull the company objects out of the model's text, even if the JSON is truncated
+// (20 companies is a lot of output; a cut-off array shouldn't lose everything).
+function parseCompanies(txt){
+  var a = txt.indexOf("{"), b = txt.lastIndexOf("}");
+  if(a >= 0 && b > a){ try{ var o = JSON.parse(txt.slice(a, b + 1)); if(o && Array.isArray(o.companies)) return o.companies; }catch(e){} }
+  // salvage: grab the companies array and parse each complete {...} object we can
+  var out = [], m = txt.match(/"companies"\s*:\s*\[/);
+  if(m){
+    var rest = txt.slice(m.index + m[0].length);
+    var objRe = /\{[^{}]*\}/g, mm;           // company objects are flat (no nesting)
+    while((mm = objRe.exec(rest))){ try{ out.push(JSON.parse(mm[0])); }catch(e){} }
+  }
+  return out;
+}
+
 async function getJSON(url){
   var c = new AbortController(), t = setTimeout(function(){ c.abort(); }, 3000);
   try{ var r = await fetch(url, { signal:c.signal, headers:{ "User-Agent":"Tailorline" } }); if(!r.ok) return null; return await r.json(); }
@@ -143,7 +158,7 @@ module.exports = async function handler(req, res){
     var out = await callGemini(url, {
       systemInstruction:{ parts:[{ text:SYS }] },
       contents:[{ role:"user", parts:[{ text:userText }] }],
-      generationConfig:{ temperature:0.6, maxOutputTokens:4096 }
+      generationConfig:{ temperature:0.6, maxOutputTokens:8192 }
     });
     var data = out.data;
     if(!out.ok){
@@ -156,12 +171,12 @@ module.exports = async function handler(req, res){
     var txt = (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts &&
       data.candidates[0].content.parts.map(function(p){ return p.text || ""; }).join("")) || "";
     txt = txt.replace(/```json?/gi, "").replace(/```/g, "").trim();
-    var a = txt.indexOf("{"), b = txt.lastIndexOf("}");
-    var parsed; try{ parsed = JSON.parse(txt.slice(a, b + 1)); }catch(e){ res.status(502).json({ error: "Could not parse suggestions" }); return; }
+    var rawCompanies = parseCompanies(txt);
+    if(!rawCompanies.length){ res.status(502).json({ error: "The AI is busy right now — give it a few seconds and tap the button again." }); return; }
 
     // drop anything on the exclude list or the company itself, then cap at 20
     var low = company.toLowerCase(), ex = {}; exclude.forEach(function(e){ ex[e.toLowerCase()] = 1; });
-    var companies = (parsed.companies || []).filter(function(c){
+    var companies = rawCompanies.filter(function(c){
       var n = clean(c && c.name); if(!n) return false;
       var k = n.toLowerCase(); return k !== low && !ex[k];
     }).slice(0, 20);
